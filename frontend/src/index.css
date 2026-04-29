@@ -1,0 +1,111 @@
+/* 🌍 Ensure full screen map works */
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+/* 🧱 Root container fix - Remove flex to prevent shrinking */
+#root {
+  display: block;
+}
+
+/* 📍 Map marker */
+.marker {
+  width: 14px;
+  height: 14px;
+  background: #3b82f6;
+  border-radius: 50%;
+  border: 2px solid white;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+}
+
+/* 🚨 SOS BUTTON (center bottom) */
+.sos-btn {
+  position: fixed;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+
+  padding: 16px 42px;
+  font-size: 18px;
+  font-weight: 700;
+
+  background: linear-gradient(135deg, #ef4444, #f87171);
+  color: white;
+
+  border: none;
+  border-radius: 50px;
+
+  cursor: pointer;
+  z-index: 9999;
+
+  box-shadow: 
+    0 10px 25px rgba(239, 68, 68, 0.4),
+    0 0 15px rgba(239, 68, 68, 0.2);
+
+  transition: all 0.2s ease;
+}
+
+/* Hover effect */
+.sos-btn:hover {
+  transform: translateX(-50%) scale(1.06);
+}
+
+/* Click effect */
+.sos-btn:active {
+  transform: translateX(-50%) scale(0.95);
+}
+
+/* Optional subtle pulse */
+@keyframes sosPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6);
+  }
+  70% {
+    box-shadow: 0 0 0 20px rgba(239, 68, 68, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+  }
+}
+
+.sos-btn {
+  animation: sosPulse 2s infinite;
+}
+
+/* 🔔 TOAST POPUP */
+.toast {
+  position: fixed;
+  top: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+
+  background: rgba(15, 23, 42, 0.95);
+  color: white;
+
+  padding: 14px 24px;
+  border-radius: 12px;
+
+  font-size: 15px;
+  font-weight: 600;
+
+  z-index: 10000;
+
+  box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+
+  animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -20px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
