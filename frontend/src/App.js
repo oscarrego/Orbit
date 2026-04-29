@@ -9,7 +9,8 @@ function App() {
   const [userLocation, setUserLocation] = useState(null);
   const [theme, setTheme] = useState(localStorage.getItem("theme") || "dark");
   const [isFollowing, setIsFollowing] = useState(true);
-  const [isUserPanelOpen, setIsUserPanelOpen] = useState(false); // 👥 Panel state
+  const [isUserPanelOpen, setIsUserPanelOpen] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(true); // 💬 Chat state
   const mapRef = useRef(null);
 
   useEffect(() => {
@@ -79,6 +80,31 @@ function App() {
         theme={theme} 
         isFollowing={isFollowing} 
       />
+
+      {/* 💬 CHAT PANEL */}
+      <div className={`chat-panel ${isChatOpen ? "open" : "closed"}`}>
+        <div className="chat-header">
+          <span>💬 Global Chat</span>
+        </div>
+        <div className="chat-messages">
+          <div className="no-users" style={{ padding: 0 }}>No messages yet...</div>
+        </div>
+      </div>
+
+      {/* ⬅️ CHAT TOGGLE BUTTON */}
+      <button 
+        className={`chat-toggle ${isChatOpen ? "open" : "closed"}`}
+        onClick={() => setIsChatOpen(!isChatOpen)}
+        title={isChatOpen ? "Collapse Chat" : "Expand Chat"}
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          {isChatOpen ? (
+            <polyline points="15 18 9 12 15 6"></polyline>
+          ) : (
+            <polyline points="9 18 15 12 9 6"></polyline>
+          )}
+        </svg>
+      </button>
 
       {/* 👥 ACTIVE USERS INDICATOR */}
       <div 

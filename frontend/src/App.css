@@ -228,18 +228,103 @@
   opacity: 0.5;
 }
 
-/* Adaptive Theme Styling */
-.dark-mode .users-indicator,
-.dark-mode .users-panel {
-  background: rgba(30, 30, 30, 0.85);
-  color: white;
+/* 💬 Chat Panel (Sidebar) */
+.chat-panel {
+  position: fixed;
+  top: 85px; /* Below active users indicator */
+  left: 0;
+  width: 320px;
+  height: calc(100% - 140px);
+  z-index: 9998;
+  border-radius: 0 16px 16px 0;
+  overflow: hidden;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 4px 0 20px rgba(0, 0, 0, 0.3);
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
 }
 
-.light-mode .users-indicator,
-.light-mode .users-panel {
+.chat-panel.closed {
+  transform: translateX(-100%);
+}
+
+.chat-header {
+  padding: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  font-weight: bold;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.chat-messages {
+  flex: 1;
+  padding: 16px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ⬅️ Toggle Button (Arrow) */
+.chat-toggle {
+  position: fixed;
+  top: 50%;
+  left: 320px;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 64px;
+  z-index: 9999;
+  background: rgba(45, 45, 45, 0.9);
+  color: white;
+  border: none;
+  border-radius: 0 12px 12px 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 4px 0 12px rgba(0, 0, 0, 0.3);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.chat-toggle.closed {
+  left: 0;
+}
+
+.chat-toggle:hover {
+  background: rgba(60, 60, 60, 1);
+  width: 38px;
+}
+
+.chat-toggle svg {
+  width: 20px;
+  height: 20px;
+  transition: transform 0.3s ease;
+}
+
+/* Adaptive Theme Styling */
+.dark-mode .chat-panel {
+  background: rgba(30, 30, 30, 0.85);
+  color: white;
+  border-right: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.light-mode .chat-panel {
   background: rgba(255, 255, 255, 0.95);
   color: #111;
-  border-color: rgba(0, 0, 0, 0.05);
+  border-right: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.light-mode .chat-toggle {
+  background: rgba(255, 255, 255, 0.9);
+  color: #333;
+}
+
+.light-mode .chat-header {
+  border-bottom-color: rgba(0, 0, 0, 0.05);
 }
 
 .light-mode .user-item:hover {
