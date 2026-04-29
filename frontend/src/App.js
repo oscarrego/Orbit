@@ -9,6 +9,7 @@ function App() {
   const [userLocation, setUserLocation] = useState(null);
   const [theme, setTheme] = useState(localStorage.getItem("theme") || "dark");
   const [isFollowing, setIsFollowing] = useState(true);
+  const [isUserPanelOpen, setIsUserPanelOpen] = useState(false); // 👥 Panel state
   const mapRef = useRef(null);
 
   useEffect(() => {
@@ -78,6 +79,47 @@ function App() {
         theme={theme} 
         isFollowing={isFollowing} 
       />
+
+      {/* 👥 ACTIVE USERS INDICATOR */}
+      <div 
+        className="users-indicator" 
+        onClick={() => setIsUserPanelOpen(!isUserPanelOpen)}
+      >
+        <div className="online-dot"></div>
+        <span>Active Users: {users.length}</span>
+      </div>
+
+      {/* 👥 USERS PANEL */}
+      {isUserPanelOpen && (
+        <div className="users-panel">
+          <h3>Nearby Users</h3>
+          <div className="user-list">
+            {users.length > 0 ? (
+              users.map((user) => (
+                <div 
+                  key={user.id} 
+                  className="user-item"
+                  onClick={() => {
+                    mapRef.current?.handleCenterOnUser(user.lng, user.lat);
+                    setIsFollowing(false); // Stop following me to look at them
+                    showToast(`📍 Tracking ${user.name}`);
+                  }}
+                >
+                  <div className="user-avatar">
+                    {user.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="user-info">
+                    <span className="user-name">{user.name} {user.id === "user1" ? "(You)" : ""}</span>
+                    <span className="user-status">Online now</span>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="no-users">No users nearby</div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* 🛠️ CONTROL CLUSTER */}
       <div className="control-cluster">

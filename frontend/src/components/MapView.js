@@ -54,6 +54,16 @@ const MapView = forwardRef(({ users, userLocation, theme, isFollowing }, ref) =>
         });
       }
     },
+    handleCenterOnUser: (lng, lat) => {
+      if (map.current) {
+        map.current.easeTo({
+          center: [lng, lat],
+          zoom: 16,
+          duration: 1200,
+          essential: true,
+        });
+      }
+    },
   }));
 
   // 🎯 Update Blue Dot Marker

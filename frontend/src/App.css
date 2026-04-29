@@ -105,22 +105,161 @@
   transform: scale(0.95);
 }
 
-/* Adaptive Theme Styling */
-.dark-mode .control-btn {
-  background: rgba(30, 30, 30, 0.9);
-  color: #fff;
+/* 👥 Active Users Indicator & Panel */
+.users-indicator {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 18px;
+  border-radius: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+  transition: all 0.3s ease;
+  font-weight: 600;
+  font-size: 14px;
 }
 
-.light-mode .control-btn {
+.users-indicator:hover {
+  transform: translateY(-2px);
+}
+
+.online-dot {
+  width: 8px;
+  height: 8px;
+  background-color: #10b981;
+  border-radius: 50%;
+  box-shadow: 0 0 8px #10b981;
+}
+
+.users-panel {
+  position: fixed;
+  top: 75px;
+  left: 20px;
+  width: 260px;
+  max-height: 300px;
+  overflow-y: auto;
+  z-index: 9999;
+  border-radius: 16px;
+  padding: 12px;
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  animation: panelSlideDown 0.3s ease-out;
+}
+
+@keyframes panelSlideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.users-panel h3 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  opacity: 0.7;
+  padding-left: 8px;
+}
+
+.user-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.user-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.user-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.user-avatar {
+  width: 32px;
+  height: 32px;
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.user-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.user-name {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.user-status {
+  font-size: 11px;
+  opacity: 0.6;
+}
+
+.no-users {
+  text-align: center;
+  padding: 20px;
+  font-size: 14px;
+  opacity: 0.5;
+}
+
+/* Adaptive Theme Styling */
+.dark-mode .users-indicator,
+.dark-mode .users-panel {
+  background: rgba(30, 30, 30, 0.85);
+  color: white;
+}
+
+.light-mode .users-indicator,
+.light-mode .users-panel {
   background: rgba(255, 255, 255, 0.95);
   color: #111;
-  border-color: rgba(0, 0, 0, 0.1);
+  border-color: rgba(0, 0, 0, 0.05);
 }
 
-/* Active State for Follow Me */
-.control-btn.active {
-  background: #3b82f6 !important;
-  color: white !important;
-  border-color: transparent;
-  box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+.light-mode .user-item:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+/* Scrollbar Styling */
+.users-panel::-webkit-scrollbar {
+  width: 6px;
+}
+
+.users-panel::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.users-panel::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+
+.light-mode .users-panel::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
 }
