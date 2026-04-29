@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, request
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit
 from pymongo import MongoClient
@@ -13,42 +13,61 @@ socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
 client = MongoClient("mongodb://localhost:27017/")
 db = client["orbit"]
 
-# In-memory store (fast)
-users = {}
+# In-memory store
+users = {} # user_id -> user data
+socket_to_user = {} # sid -> user_id
 
 # ---------------------------
 # CONNECT
 # ---------------------------
 @socketio.on("connect")
 def connect():
-    print("User connected")
+    print(f"Client connected: {request.sid}")
 
 # ---------------------------
 # DISCONNECT
 # ---------------------------
 @socketio.on("disconnect")
 def disconnect():
-    print("User disconnected")
+    sid = request.sid
+    user_id = socket_to_user.get(sid)
+
+    if user_id:
+        users.pop(user_id, None)
+        socket_to_user.pop(sid, None)
+        print(f"User {user_id} disconnected")
+    else:
+        print(f"Unknown client disconnected: {sid}")
+
+    # Always emit clean list
+    socketio.emit("update_users", list(users.values()))
 
 # ---------------------------
 # LOCATION UPDATE
 # ---------------------------
 @socketio.on("send_location")
 def handle_location(data):
-    user_id = data["id"]
+    user_id = data.get("id")
+    if not user_id:
+        return
 
+    sid = request.sid
+
+    # Store/update user in users dict
     users[user_id] = {
         "id": user_id,
-        "name": data["name"],
-        "lat": data["lat"],
-        "lng": data["lng"],
+        "name": data.get("name", "Unknown"),
+        "lat": data.get("lat"),
+        "lng": data.get("lng"),
         "heading": data.get("heading", 0),
         "timestamp": time.time()
     }
 
-    # Broadcast all users
-    emit("update_users", list(users.values()), broadcast=True)
+    # Map socket.id -> user_id
+    socket_to_user[sid] = user_id
 
+    # Always emit clean list
+    socketio.emit("update_users", list(users.values()))
 # ---------------------------
 # CHAT
 # ---------------------------

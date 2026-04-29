@@ -3,6 +3,19 @@ import MapView from "./components/MapView";
 import socket from "./components/SocketManager";
 import "./App.css";
 
+// 🛠️ Helpers for persistent identity
+const getPersistentUser = () => {
+  const savedName = localStorage.getItem("username");
+  let savedId = localStorage.getItem("userId");
+  
+  if (!savedId) {
+    savedId = "user_" + Math.random().toString(36).substr(2, 9);
+    localStorage.setItem("userId", savedId);
+  }
+  
+  return { username: savedName, userId: savedId };
+};
+
 function App() {
   const [users, setUsers] = useState([]);
   const [toast, setToast] = useState(null);
@@ -10,22 +23,36 @@ function App() {
   const [theme, setTheme] = useState(localStorage.getItem("theme") || "dark");
   const [isFollowing, setIsFollowing] = useState(true);
   const [isUserPanelOpen, setIsUserPanelOpen] = useState(false);
-  const [isChatOpen, setIsChatOpen] = useState(true); // 💬 Chat state
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  
+  // 🔑 Auth State
+  const [user, setUser] = useState(getPersistentUser());
+  const [tempName, setTempName] = useState("");
   const mapRef = useRef(null);
 
+  // 💾 Persist theme
   useEffect(() => {
     localStorage.setItem("theme", theme);
   }, [theme]);
 
+  // 🔌 Receive live users
   useEffect(() => {
     socket.on("update_users", (data) => {
-      setUsers(data);
+      // 🛡️ Safety filter: Ensure only unique user IDs are stored
+      const unique = {};
+      data.forEach((u) => {
+        unique[u.id] = u;
+      });
+      setUsers(Object.values(unique));
     });
 
     return () => socket.off("update_users");
   }, []);
 
+  // 📍 Send live location
   useEffect(() => {
+    if (!user.username) return;
+
     const watchId = navigator.geolocation.watchPosition(
       (pos) => {
         const coords = {
@@ -36,8 +63,8 @@ function App() {
         setUserLocation(coords);
 
         socket.emit("send_location", {
-          id: "user1",
-          name: "Oscar",
+          id: user.userId,
+          name: user.username,
           ...coords,
         });
       },
@@ -49,14 +76,31 @@ function App() {
     );
 
     return () => navigator.geolocation.clearWatch(watchId);
-  }, []);
+  }, [user.username, user.userId]);
+
+  // 🔑 Handle Login
+  const handleLogin = (e) => {
+    e.preventDefault();
+    const trimmed = tempName.trim();
+    if (!trimmed) return;
+
+    localStorage.setItem("username", trimmed);
+    setUser((prev) => ({ ...prev, username: trimmed }));
+    showToast(`👋 Welcome, ${trimmed}!`);
+  };
+
+  // 🚪 Handle Logout
+  const handleLogout = () => {
+    localStorage.removeItem("username");
+    window.location.reload();
+  };
 
   const handleSOS = () => {
-    if (!userLocation) return;
+    if (!userLocation || !user.username) return;
     
     const data = {
-      id: "user1",
-      name: "Oscar",
+      id: user.userId,
+      name: user.username,
       ...userLocation,
     };
 
@@ -70,6 +114,28 @@ function App() {
       setToast(null);
     }, 3000);
   };
+
+  // 🛸 If no username, show Login Page
+  if (!user.username) {
+    return (
+      <div className="login-overlay">
+        <div className="login-card">
+          <h2>Enter your name</h2>
+          <form onSubmit={handleLogin}>
+            <input 
+              type="text" 
+              placeholder="Username" 
+              value={tempName}
+              onChange={(e) => setTempName(e.target.value)}
+              autoFocus
+              maxLength={20}
+            />
+            <button type="submit">Continue</button>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ width: "100vw", height: "100vh", position: "relative", overflow: "hidden" }} className={`${theme}-mode`}>
@@ -96,7 +162,6 @@ function App() {
         </div>
 
         <div className="chat-input-container">
-          {/* Join Room Input (Optional/Placeholder) */}
           <div className="message-input-wrapper">
             <input type="text" placeholder="Type a message..." />
             <button className="send-btn">
@@ -139,21 +204,21 @@ function App() {
           <h3>Nearby Users</h3>
           <div className="user-list">
             {users.length > 0 ? (
-              users.map((user) => (
+              users.map((u) => (
                 <div 
-                  key={user.id} 
+                  key={u.id} 
                   className="user-item"
                   onClick={() => {
-                    mapRef.current?.handleCenterOnUser(user.lng, user.lat);
-                    setIsFollowing(false); // Stop following me to look at them
-                    showToast(`📍 Tracking ${user.name}`);
+                    mapRef.current?.handleCenterOnUser(u.lng, u.lat);
+                    setIsFollowing(false);
+                    showToast(`📍 Tracking ${u.name}`);
                   }}
                 >
                   <div className="user-avatar">
-                    {user.name.charAt(0).toUpperCase()}
+                    {u.name.charAt(0).toUpperCase()}
                   </div>
                   <div className="user-info">
-                    <span className="user-name">{user.name} {user.id === "user1" ? "(You)" : ""}</span>
+                    <span className="user-name">{u.name} {u.id === user.userId ? "(You)" : ""}</span>
                     <span className="user-status">Online now</span>
                   </div>
                 </div>
@@ -162,6 +227,7 @@ function App() {
               <div className="no-users">No users nearby</div>
             )}
           </div>
+          <button className="logout-btn" onClick={handleLogout}>Reset Username</button>
         </div>
       )}
 
