@@ -1,17 +1,34 @@
 from flask import Flask, request
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit
-from pymongo import MongoClient
+import sqlite3
 import time
+import os
 
 app = Flask(__name__)
 CORS(app)
 
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
 
-# MongoDB (optional)
-client = MongoClient("mongodb://localhost:27017/")
-db = client["orbit"]
+# SQLite Setup
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_FILE = os.path.join(BASE_DIR, "chat.db")
+
+def init_db():
+    conn = sqlite3.connect(DB_FILE, check_same_thread=False)
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user TEXT,
+            text TEXT,
+            timestamp REAL
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+init_db()
 
 # In-memory store
 users = {} # user_id -> user data
@@ -23,6 +40,24 @@ socket_to_user = {} # sid -> user_id
 @socketio.on("connect")
 def connect():
     print(f"Client connected: {request.sid}")
+    
+    # Load last 50 messages
+    conn = sqlite3.connect(DB_FILE, check_same_thread=False)
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT user, text, timestamp 
+        FROM messages 
+        ORDER BY id DESC 
+        LIMIT 50
+    """)
+    rows = cursor.fetchall()
+    conn.close()
+    
+    # Convert to list of dicts and reverse (oldest first)
+    messages = [{"user": r[0], "text": r[1], "timestamp": r[2]} for r in rows]
+    messages.reverse()
+    
+    emit("load_messages", messages)
 
 # ---------------------------
 # DISCONNECT
@@ -68,11 +103,27 @@ def handle_location(data):
 
     # Always emit clean list
     socketio.emit("update_users", list(users.values()))
+
 # ---------------------------
 # CHAT
 # ---------------------------
 @socketio.on("send_message")
 def handle_message(data):
+    user = data.get("user")
+    text = data.get("text", "").strip()
+    timestamp = data.get("timestamp", time.time())
+    
+    if not user or not text:
+        return
+
+    # Save to SQLite
+    conn = sqlite3.connect(DB_FILE, check_same_thread=False)
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO messages (user, text, timestamp) VALUES (?, ?, ?)", 
+                   (user, text, timestamp))
+    conn.commit()
+    conn.close()
+
     emit("receive_message", data, broadcast=True)
 
 # ---------------------------

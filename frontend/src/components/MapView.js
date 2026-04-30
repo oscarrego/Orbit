@@ -2,7 +2,7 @@ import { useEffect, useRef, forwardRef, useImperativeHandle } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 
-const MapView = forwardRef(({ users, userLocation, theme, isFollowing }, ref) => {
+const MapView = forwardRef(({ users, userLocation, theme, isFollowing, setIsFollowing, onAutoDisableFollowing }, ref) => {
   const mapContainer = useRef(null);
   const map = useRef(null);
   const markers = useRef({});
@@ -32,6 +32,19 @@ const MapView = forwardRef(({ users, userLocation, theme, isFollowing }, ref) =>
     // 'styledata' fires when style changes, ensuring 3D layers are always re-added
     map.current.on("styledata", () => {
       add3D();
+    });
+
+    // 📍 Auto-disable follow mode on user interaction
+    map.current.on("dragstart", () => {
+      if (onAutoDisableFollowing) onAutoDisableFollowing();
+    });
+
+    map.current.on("zoomstart", () => {
+      if (onAutoDisableFollowing) onAutoDisableFollowing();
+    });
+
+    map.current.on("rotatestart", () => {
+      if (onAutoDisableFollowing) onAutoDisableFollowing();
     });
 
     map.current.on("error", (e) => console.error("MapLibre Error:", e));

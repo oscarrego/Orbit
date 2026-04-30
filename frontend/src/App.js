@@ -25,6 +25,11 @@ function App() {
   const [isUserPanelOpen, setIsUserPanelOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   
+  // 💬 Chat State
+  const [chatMessages, setChatMessages] = useState([]);
+  const [msgInput, setMsgInput] = useState("");
+  const chatEndRef = useRef(null);
+  
   // 🔑 Auth State
   const [user, setUser] = useState(getPersistentUser());
   const [tempName, setTempName] = useState("");
@@ -35,10 +40,9 @@ function App() {
     localStorage.setItem("theme", theme);
   }, [theme]);
 
-  // 🔌 Receive live users
+  // 🔌 Socket Listeners
   useEffect(() => {
     socket.on("update_users", (data) => {
-      // 🛡️ Safety filter: Ensure only unique user IDs are stored
       const unique = {};
       data.forEach((u) => {
         unique[u.id] = u;
@@ -46,8 +50,25 @@ function App() {
       setUsers(Object.values(unique));
     });
 
-    return () => socket.off("update_users");
+    socket.on("load_messages", (messages) => {
+      setChatMessages(messages);
+    });
+
+    socket.on("receive_message", (msg) => {
+      setChatMessages((prev) => [...prev, msg]);
+    });
+
+    return () => {
+      socket.off("update_users");
+      socket.off("load_messages");
+      socket.off("receive_message");
+    };
   }, []);
+
+  // 📜 Auto-scroll chat
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chatMessages]);
 
   // 📍 Send live location
   useEffect(() => {
@@ -95,6 +116,22 @@ function App() {
     window.location.reload();
   };
 
+  // 💬 Handle Send Message
+  const sendMessage = (e) => {
+    e.preventDefault();
+    const text = msgInput.trim();
+    if (!text) return;
+
+    const msgData = {
+      user: user.username,
+      text: text,
+      timestamp: Date.now() / 1000,
+    };
+
+    socket.emit("send_message", msgData);
+    setMsgInput("");
+  };
+
   const handleSOS = () => {
     if (!userLocation || !user.username) return;
     
@@ -137,6 +174,14 @@ function App() {
     );
   }
 
+  // 🛰️ Handle Auto-disable Follow Me
+  const handleAutoDisableFollowing = () => {
+    if (isFollowing) {
+      setIsFollowing(false);
+      showToast("🛰️ Follow Me turned off (manual move detected)");
+    }
+  };
+
   return (
     <div style={{ width: "100vw", height: "100vh", position: "relative", overflow: "hidden" }} className={`${theme}-mode`}>
       <MapView 
@@ -145,6 +190,8 @@ function App() {
         userLocation={userLocation} 
         theme={theme} 
         isFollowing={isFollowing} 
+        setIsFollowing={setIsFollowing}
+        onAutoDisableFollowing={handleAutoDisableFollowing}
       />
 
       {/* 💬 CHAT PANEL (Mica Dark) */}
@@ -155,24 +202,40 @@ function App() {
         </div>
         
         <div className="chat-messages">
-          <div className="empty-state">
-            <p>No messages yet.</p>
-            <p style={{ opacity: 0.6 }}>Say hello!</p>
-          </div>
+          {chatMessages.length === 0 ? (
+            <div className="empty-state">
+              <p>No messages yet.</p>
+              <p style={{ opacity: 0.6 }}>Say hello!</p>
+            </div>
+          ) : (
+            chatMessages.map((msg, i) => (
+              <div key={i} className="chat-msg">
+                <span className="msg-user">{msg.user}:</span>
+                <span className="msg-text">{msg.text}</span>
+              </div>
+            ))
+          )}
+          <div ref={chatEndRef} />
         </div>
 
-        <div className="chat-input-container">
+        <form className="chat-input-container" onSubmit={sendMessage}>
           <div className="message-input-wrapper">
-            <input type="text" placeholder="Type a message..." />
-            <button className="send-btn">
+            <input 
+              type="text" 
+              placeholder="Type a message..." 
+              value={msgInput}
+              onChange={(e) => setMsgInput(e.target.value)}
+            />
+            <button type="submit" className="send-btn">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 16, height: 16 }}>
                 <line x1="22" y1="2" x2="11" y2="13"></line>
                 <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
               </svg>
             </button>
           </div>
-        </div>
+        </form>
       </div>
+
 
       {/* ⬅️ CHAT TOGGLE BUTTON */}
       <button 
@@ -227,7 +290,6 @@ function App() {
               <div className="no-users">No users nearby</div>
             )}
           </div>
-          <button className="logout-btn" onClick={handleLogout}>Reset Username</button>
         </div>
       )}
 

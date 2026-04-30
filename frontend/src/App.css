@@ -81,15 +81,19 @@
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   display: flex;
   align-items: center;
   justify-content: center;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background: rgba(10, 10, 10, 0.7);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+  transition: all 0.2s ease;
+  box-shadow: 
+    0 12px 40px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  color: #f1f5f9;
 }
 
 .control-btn svg {
@@ -98,6 +102,7 @@
 }
 
 .control-btn:hover {
+  background: rgba(20, 20, 20, 0.85);
   transform: scale(1.08);
 }
 
@@ -105,15 +110,25 @@
   transform: scale(0.95);
 }
 
+.control-btn.active {
+  background: rgba(59, 130, 246, 0.9) !important;
+  color: white !important;
+  border: none !important;
+  box-shadow: 
+    0 6px 25px rgba(59, 130, 246, 0.6),
+    0 0 10px rgba(59, 130, 246, 0.4) !important;
+}
+
 /* ✨ Mica Dark Global Effect */
 .mica-effect {
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  background: rgba(30, 30, 30, 0.65);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(10, 10, 10, 0.7);   /* darker than before */
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   box-shadow: 
-    0 8px 32px rgba(0, 0, 0, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    0 12px 40px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  color: #ffffff;
 }
 
 /* 👥 Active Users Indicator (Mica Dark) */
@@ -129,21 +144,17 @@
   border-radius: 30px;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.dark-mode .users-indicator {
-  extend: .mica-effect; /* Logical reference */
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  background: rgba(30, 30, 30, 0.65);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  color: #e5e7eb;
+  background: rgba(10, 10, 10, 0.7);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  color: #ffffff;
 }
 
 .users-indicator:hover {
   transform: scale(1.03);
-  background: rgba(45, 45, 45, 0.75);
+  background: rgba(20, 20, 20, 0.85);
 }
 
 .online-dot {
@@ -171,15 +182,12 @@
   transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
   display: flex;
   flex-direction: column;
-}
-
-.dark-mode .chat-panel {
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  background: rgba(30, 30, 30, 0.65);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  color: white;
+  background: rgba(10, 10, 10, 0.7);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  color: #ffffff;
 }
 
 .chat-panel.closed {
@@ -209,8 +217,33 @@
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  justify-content: center; /* Center empty state */
-  align-items: center;
+  gap: 12px;
+}
+
+.chat-msg {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.msg-user {
+  font-size: 11px;
+  font-weight: 700;
+  color: #3b82f6;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.msg-text {
+  font-size: 14px;
+  line-height: 1.5;
+  color: #e5e7eb;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 8px 12px;
+  border-radius: 0 12px 12px 12px;
+  align-self: flex-start;
+  max-width: 90%;
 }
 
 .empty-state {
@@ -233,27 +266,28 @@
 }
 
 .message-input-wrapper {
-  background: rgba(255, 255, 255, 0.06);
   border-radius: 20px;
-  padding: 4px 4px 4px 12px;
+  padding: 4px;
   display: flex;
   align-items: center;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  gap: 8px;
 }
 
-.message-input-wrapper input {
+.chat-panel input {
   flex: 1;
-  background: transparent;
-  border: none;
-  color: #e5e7eb;
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 10px 16px;
   font-size: 14px;
   outline: none;
-  padding: 8px 0;
 }
 
-.message-input-wrapper input::placeholder {
+.chat-panel input::placeholder {
   color: rgba(255, 255, 255, 0.4);
 }
+
 
 .send-btn {
   width: 32px;
@@ -282,21 +316,18 @@
   width: 36px;
   height: 60px;
   z-index: 9999;
-  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.dark-mode .chat-toggle {
-  background: rgba(20, 20, 20, 0.7);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  color: white;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  background: rgba(20, 20, 20, 0.55);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  color: #ffffff;
 }
 
 .chat-toggle.closed {
@@ -319,33 +350,65 @@
   z-index: 9999;
   border-radius: 16px;
   padding: 12px;
-  backdrop-filter: blur(15px);
-  -webkit-backdrop-filter: blur(15px);
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(10, 10, 10, 0.7);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 
+    0 12px 40px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  color: #ffffff;
   animation: panelSlideDown 0.3s ease-out;
 }
 
-.dark-mode .users-panel {
-  background: rgba(30, 30, 30, 0.85);
-  color: white;
+.users-panel h3 {
+  color: #f1f5f9;
+  margin-top: 0;
+  margin-bottom: 12px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
 /* (Rest of existing styles like user-item, markers, etc. simplified for clarity) */
-.user-item { display: flex; align-items: center; gap: 12px; padding: 8px; border-radius: 10px; cursor: pointer; }
-.user-item:hover { background: rgba(255, 255, 255, 0.1); }
-.light-mode .user-item:hover { background: rgba(0, 0, 0, 0.05); }
+.user-item { 
+  display: flex; 
+  align-items: center; 
+  gap: 12px; 
+  padding: 8px; 
+  border-radius: 8px; 
+  cursor: pointer; 
+  color: #e2e8f0;
+  transition: all 0.2s ease;
+}
 
-/* 🌓 Light Mode Fallbacks */
-.light-mode .users-indicator { background: rgba(255, 255, 255, 0.95); color: #111; border: 1px solid rgba(0, 0, 0, 0.1); }
-.light-mode .chat-panel { background: rgba(255, 255, 255, 0.95); color: #111; border: 1px solid rgba(0, 0, 0, 0.1); }
-.light-mode .chat-toggle { background: rgba(255, 255, 255, 0.9); color: #333; border: 1px solid rgba(0, 0, 0, 0.1); }
-.light-mode .chat-header span { color: #6b7280; }
-.light-mode .empty-state { color: rgba(0, 0, 0, 0.4); }
-.light-mode .message-input-wrapper { background: rgba(0, 0, 0, 0.03); border-color: rgba(0, 0, 0, 0.1); }
-.light-mode .message-input-wrapper input { color: #111; }
-.light-mode .message-input-wrapper input::placeholder { color: rgba(0, 0, 0, 0.3); }
-.light-mode .send-btn { background: rgba(0, 0, 0, 0.05); color: #333; }
+.user-item:hover { 
+  background: rgba(255, 255, 255, 0.04); 
+}
+.user-name {
+  color: #e2e8f0;
+}
+
+.user-status {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* 🌓 Global Dark Layer (for clarity) */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.08);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* 🌓 Light Mode Adjustment Override */
+body.light-mode::before {
+  background: rgba(0, 0, 0, 0.15);
+}
+
 /* 🔑 Login Page */
 .login-overlay {
   position: fixed;
@@ -428,24 +491,6 @@
   transform: translateY(0);
 }
 
-/* Logout Option in User Panel */
-.logout-btn {
-  margin-top: 12px;
-  padding: 8px;
-  width: 100%;
-  background: rgba(239, 68, 68, 0.1);
-  color: #ef4444;
-  border: 1px solid rgba(239, 68, 68, 0.2);
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.logout-btn:hover {
-  background: rgba(239, 68, 68, 0.2);
-}
 .users-panel::-webkit-scrollbar {
   width: 6px;
 }
@@ -459,6 +504,3 @@
   border-radius: 10px;
 }
 
-.light-mode .users-panel::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.1);
-}
