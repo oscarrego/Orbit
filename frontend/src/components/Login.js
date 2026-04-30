@@ -1,5 +1,166 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './Login.css';
+
+const SpaceParticles = () => {
+  const canvasRef = useRef(null);
+  const particles = useRef([]);
+  const shootingStars = useRef([]);
+  const mouse = useRef({ x: null, y: null });
+
+  const handleMouseMove = (e) => {
+    if (!canvasRef.current) return;
+    const rect = canvasRef.current.getBoundingClientRect();
+    mouse.current.x = e.clientX - rect.left;
+    mouse.current.y = e.clientY - rect.top;
+  };
+
+  const handleMouseLeave = () => {
+    mouse.current.x = null;
+    mouse.current.y = null;
+  };
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+
+    const resize = () => {
+      canvas.width = canvas.offsetWidth;
+      canvas.height = canvas.offsetHeight;
+      initParticles();
+    };
+
+    const initParticles = () => {
+      particles.current = [];
+      const layers = [
+        { count: 120, size: [0.4, 0.8], speed: 0.02, opacity: [0.1, 0.3] },
+        { count: 60,  size: [0.8, 1.5], speed: 0.05, opacity: [0.3, 0.6] },
+        { count: 25,  size: [1.5, 2.5], speed: 0.12, opacity: [0.6, 0.9] }
+      ];
+
+      layers.forEach(layer => {
+        for (let i = 0; i < layer.count; i++) {
+          particles.current.push({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            size: Math.random() * (layer.size[1] - layer.size[0]) + layer.size[0],
+            vx: (Math.random() - 0.5) * layer.speed,
+            vy: (Math.random() - 0.5) * layer.speed,
+            opacity: Math.random() * (layer.opacity[1] - layer.opacity[0]) + layer.opacity[0],
+            twinkleSpeed: Math.random() * 0.005 + 0.002,
+            layerSpeed: layer.speed,
+            color: `rgba(200, 220, 255,`
+          });
+        }
+      });
+    };
+
+    const spawnShootingStar = () => {
+      if (Math.random() > 0.998) {
+        shootingStars.current.push({
+          x: Math.random() * (canvas.width * 0.5),
+          y: Math.random() * (canvas.height * 0.5),
+          len: Math.random() * 120 + 80,
+          speed: Math.random() * 12 + 8,
+          opacity: 1,
+        });
+      }
+    };
+
+    window.addEventListener("resize", resize);
+    resize();
+
+    let animationFrameId;
+    const animate = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      particles.current.forEach((p) => {
+        p.x += p.vx;
+        p.y += p.vy;
+
+        if (p.x < 0) p.x = canvas.width;
+        if (p.x > canvas.width) p.x = 0;
+        if (p.y < 0) p.y = canvas.height;
+        if (p.y > canvas.height) p.y = 0;
+
+        if (mouse.current.x !== null) {
+          const dx = p.x - mouse.current.x;
+          const dy = p.y - mouse.current.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          const maxDist = 150;
+
+          if (dist < maxDist) {
+            const force = (maxDist - dist) / maxDist;
+            p.x += (dx / dist) * force * (p.layerSpeed * 10);
+            p.y += (dy / dist) * force * (p.layerSpeed * 10);
+          }
+        }
+
+        p.opacity += p.twinkleSpeed;
+        if (p.opacity > 0.9 || p.opacity < 0.1) p.twinkleSpeed *= -1;
+
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fillStyle = `${p.color} ${p.opacity})`;
+        ctx.shadowBlur = p.size * 3;
+        ctx.shadowColor = "rgba(180, 200, 255, 0.8)";
+        ctx.fill();
+        ctx.shadowBlur = 0; 
+      });
+
+      spawnShootingStar();
+      shootingStars.current.forEach((s, index) => {
+        s.x += s.speed;
+        s.y += s.speed * 0.5;
+        s.opacity -= 0.015;
+
+        if (s.opacity <= 0) {
+          shootingStars.current.splice(index, 1);
+        } else {
+          ctx.save();
+          const grad = ctx.createLinearGradient(s.x, s.y, s.x - s.len, s.y - s.len * 0.5);
+          grad.addColorStop(0, `rgba(255, 255, 255, ${s.opacity})`);
+          grad.addColorStop(0.2, `rgba(180, 210, 255, ${s.opacity * 0.5})`);
+          grad.addColorStop(1, "rgba(180, 210, 255, 0)");
+          
+          ctx.beginPath();
+          ctx.strokeStyle = grad;
+          ctx.lineWidth = 1.2;
+          ctx.lineCap = "round";
+          ctx.shadowBlur = 10;
+          ctx.shadowColor = "rgba(180, 210, 255, 0.8)";
+          ctx.moveTo(s.x, s.y);
+          ctx.lineTo(s.x - s.len, s.y - s.len * 0.5);
+          ctx.stroke();
+          
+          ctx.beginPath();
+          ctx.fillStyle = `rgba(255, 255, 255, ${s.opacity})`;
+          ctx.arc(s.x, s.y, 1, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+      });
+
+      animationFrameId = requestAnimationFrame(animate);
+    };
+
+    animate();
+
+    return () => {
+      window.removeEventListener("resize", resize);
+      cancelAnimationFrame(animationFrameId);
+    };
+  }, []);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      className="space-particles-canvas"
+    />
+  );
+};
 
 const Login = ({ onLogin }) => {
   const [username, setUsername] = useState('');
@@ -77,24 +238,10 @@ const Login = ({ onLogin }) => {
           </div>
         </div>
 
-        {/* Right Side: Illustration */}
+        {/* Right Side: Visual */}
         <div className="login-visual-section">
-          <div className="illustration-container">
-            <div className="sky-gradient">
-              <div className="sun"></div>
-            </div>
-            <div className="landscape">
-              <div className="mountain mountain-1"></div>
-              <div className="mountain mountain-2"></div>
-              <div className="tree-group">
-                <div className="tree tree-1"></div>
-                <div className="tree tree-2"></div>
-                <div className="tree tree-3"></div>
-              </div>
-            </div>
-            <div className="visual-text">
-              <h2 className="visual-title">Finally, your dream workspace.</h2>
-            </div>
+          <div className="visual-panel-container">
+            <SpaceParticles />
           </div>
         </div>
       </div>
