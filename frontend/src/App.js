@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import MapView from "./components/MapView";
+import Login from "./components/Login";
 import socket from "./components/SocketManager";
 import "./App.css";
 
@@ -31,7 +32,6 @@ function App() {
   
   // 🔑 Auth State
   const [user, setUser] = useState(getPersistentUser());
-  const [tempName, setTempName] = useState("");
   const mapRef = useRef(null);
 
   // 💾 Persist theme
@@ -99,12 +99,13 @@ function App() {
   }, [user.username, user.userId]);
 
   // 🔑 Handle Login
-  const handleLogin = (e) => {
-    e.preventDefault();
-    const trimmed = tempName.trim();
+  const handleLogin = (username, roomId) => {
+    const trimmed = username.trim();
     if (!trimmed) return;
 
     localStorage.setItem("username", trimmed);
+    if (roomId) localStorage.setItem("roomId", roomId.trim());
+    
     setUser((prev) => ({ ...prev, username: trimmed }));
     showToast(`👋 Welcome, ${trimmed}!`);
   };
@@ -153,24 +154,7 @@ function App() {
 
   // 🛸 If no username, show Login Page
   if (!user.username) {
-    return (
-      <div className="login-overlay">
-        <div className="login-card">
-          <h2>Enter your name</h2>
-          <form onSubmit={handleLogin}>
-            <input 
-              type="text" 
-              placeholder="Username" 
-              value={tempName}
-              onChange={(e) => setTempName(e.target.value)}
-              autoFocus
-              maxLength={20}
-            />
-            <button type="submit">Continue</button>
-          </form>
-        </div>
-      </div>
-    );
+    return <Login onLogin={handleLogin} />;
   }
 
   // 🛰️ Handle Auto-disable Follow Me
