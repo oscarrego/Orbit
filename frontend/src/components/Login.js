@@ -166,6 +166,7 @@ const Login = ({ onLogin }) => {
   const [username, setUsername] = useState('');
   const [roomId, setRoomId] = useState('');
   const [errors, setErrors] = useState({});
+  const [isAnimating, setIsAnimating] = useState(false);
 
   const validate = (name, value) => {
     let error = '';
@@ -216,11 +217,16 @@ const Login = ({ onLogin }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (isAnimating) return;
+
     const isUsernameValid = validate('username', username);
     const isRoomIdValid = validate('roomId', roomId);
 
     if (isUsernameValid && isRoomIdValid) {
-      onLogin(username.trim(), roomId.trim() || 'Global');
+      setIsAnimating(true);
+      setTimeout(() => {
+        onLogin(username.trim(), roomId.trim() || 'Global');
+      }, 500); // Wait for energy transfer animation to complete
     }
   };
 
@@ -282,8 +288,14 @@ const Login = ({ onLogin }) => {
               {errors.roomId && <span className="error-text">{errors.roomId}</span>}
             </div>
 
-            <button type="submit" className="signin-button">
-              Launch Orbit
+            <button type="submit" className={`signin-button ${isAnimating ? 'animating' : ''}`}>
+              <span className="button-text">Launch Orbit</span>
+              {isAnimating && (
+                <div className="energy-transfer-container">
+                  <div className="energy-streak-line"></div>
+                  <div className="streak-head"></div>
+                </div>
+              )}
             </button>
           </form>
         </div>
