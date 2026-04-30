@@ -165,11 +165,62 @@ const SpaceParticles = () => {
 const Login = ({ onLogin }) => {
   const [username, setUsername] = useState('');
   const [roomId, setRoomId] = useState('');
+  const [errors, setErrors] = useState({});
+
+  const validate = (name, value) => {
+    let error = '';
+    const trimmed = value.trim();
+
+    if (name === 'username') {
+      if (!trimmed) {
+        error = 'Name is required';
+      } else if (trimmed.length < 2 || trimmed.length > 20) {
+        error = 'Name must be 2–20 characters';
+      } else {
+        const forbidden = ['admin', 'moderator', 'system', 'root', 'fuck', 'shit', 'ass', 'bitch'];
+        if (forbidden.some(word => trimmed.toLowerCase().includes(word))) {
+          error = 'Please choose an appropriate name';
+        }
+      }
+    }
+
+    if (name === 'roomId') {
+      const roomRegex = /^[a-zA-Z0-9 ]*$/;
+      if (!roomRegex.test(value)) {
+        error = 'Only letters, numbers, and spaces allowed';
+      }
+    }
+
+    setErrors(prev => ({
+      ...prev,
+      [name]: error
+    }));
+
+    return !error;
+  };
+
+  const handleBlur = (e) => {
+    validate(e.target.name, e.target.value);
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    if (name === 'username') setUsername(value);
+    if (name === 'roomId') setRoomId(value);
+
+    // Clear error while typing if it becomes valid
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: '' }));
+    }
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (username.trim()) {
-      onLogin(username.trim(), roomId.trim());
+    const isUsernameValid = validate('username', username);
+    const isRoomIdValid = validate('roomId', roomId);
+
+    if (isUsernameValid && isRoomIdValid) {
+      onLogin(username.trim(), roomId.trim() || 'Global');
     }
   };
 
@@ -187,35 +238,48 @@ const Login = ({ onLogin }) => {
       <div className="login-card">
         <div className="form-content">
           <div className="brand-header">
-            <div className="orbit-logo">
-              <div className="center-dot"></div>
-              <div className="orbit-ring ring-1">
-                <div className="satellite"></div>
+            <div className="orbit-logo-container">
+              <div className="logo-halo"></div>
+              <div className="logo-core"></div>
+              <div className="orbit-ring ring-alpha">
+                <div className="orbit-node node-alpha"></div>
               </div>
-              <div className="orbit-ring ring-2"></div>
+              <div className="orbit-ring ring-beta">
+                <div className="orbit-node node-beta"></div>
+              </div>
+              <div className="orbit-ring ring-gamma"></div>
             </div>
             <h1 className="form-title">Orbit</h1>
           </div>
 
           <form onSubmit={handleSubmit} className="actual-form">
-            <div className="input-group">
+            <div className={`input-group ${errors.username ? 'has-error' : ''}`}>
+              <label className="input-label">Your name</label>
               <input
                 type="text"
+                name="username"
                 placeholder="Username"
                 value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                autoComplete="off"
                 required
               />
+              {errors.username && <span className="error-text">{errors.username}</span>}
             </div>
 
-            <div className="input-group">
+            <div className={`input-group ${errors.roomId ? 'has-error' : ''}`}>
+              <label className="input-label">Room</label>
               <input
                 type="text"
-                placeholder="Room ID"
+                name="roomId"
+                placeholder="e.g. Global"
                 value={roomId}
-                onChange={(e) => setRoomId(e.target.value)}
-                required
+                onChange={handleChange}
+                onBlur={handleBlur}
+                autoComplete="off"
               />
+              {errors.roomId && <span className="error-text">{errors.roomId}</span>}
             </div>
 
             <button type="submit" className="signin-button">
