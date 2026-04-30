@@ -178,7 +178,6 @@ function App() {
   const handleAutoDisableFollowing = () => {
     if (isFollowing) {
       setIsFollowing(false);
-      showToast("🛰️ Follow Me turned off (manual move detected)");
     }
   };
 
