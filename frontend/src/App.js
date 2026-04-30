@@ -22,8 +22,7 @@ function App() {
   const [userLocation, setUserLocation] = useState(null);
   const [theme, setTheme] = useState(localStorage.getItem("theme") || "dark");
   const [isFollowing, setIsFollowing] = useState(true);
-  const [isUserPanelOpen, setIsUserPanelOpen] = useState(false);
-  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [activePanel, setActivePanel] = useState(null); // 'chat', 'users', or null
   
   // 💬 Chat State
   const [chatMessages, setChatMessages] = useState([]);
@@ -194,7 +193,7 @@ function App() {
       />
 
       {/* 💬 CHAT PANEL (Mica Dark) */}
-      <div className={`chat-panel ${isChatOpen ? "open" : "closed"}`}>
+      <div className={`chat-panel ${activePanel === "chat" ? "open" : "closed"}`}>
         <div className="chat-header">
           <div className="online-dot"></div>
           <span>Global Chat</span>
@@ -238,12 +237,12 @@ function App() {
 
       {/* ⬅️ CHAT TOGGLE BUTTON */}
       <button 
-        className={`chat-toggle ${isChatOpen ? "open" : "closed"}`}
-        onClick={() => setIsChatOpen(!isChatOpen)}
-        title={isChatOpen ? "Collapse Chat" : "Expand Chat"}
+        className={`chat-toggle ${activePanel === "chat" ? "open" : "closed"}`}
+        onClick={() => setActivePanel(prev => (prev === "chat" ? null : "chat"))}
+        title={activePanel === "chat" ? "Collapse Chat" : "Expand Chat"}
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-          {isChatOpen ? (
+          {activePanel === "chat" ? (
             <polyline points="15 18 9 12 15 6"></polyline>
           ) : (
             <polyline points="9 18 15 12 9 6"></polyline>
@@ -254,14 +253,14 @@ function App() {
       {/* 👥 ACTIVE USERS INDICATOR */}
       <div 
         className="users-indicator" 
-        onClick={() => setIsUserPanelOpen(!isUserPanelOpen)}
+        onClick={() => setActivePanel(prev => (prev === "users" ? null : "users"))}
       >
         <div className="online-dot"></div>
         <span>Active Users: {users.length}</span>
       </div>
 
       {/* 👥 USERS PANEL */}
-      {isUserPanelOpen && (
+      {activePanel === "users" && (
         <div className="users-panel">
           <h3>Nearby Users</h3>
           <div className="user-list">
