@@ -18,8 +18,16 @@ const Login = ({ onLogin }) => {
         {/* Left Side: Form */}
         <div className="login-form-section">
           <div className="form-content">
-            <h1 className="form-title">Hello Again!</h1>
-            <p className="form-subtitle">Let's get started with your 30 days trial</p>
+            <div className="brand-header">
+              <div className="orbit-logo">
+                <div className="center-dot"></div>
+                <div className="orbit-ring ring-1">
+                  <div className="satellite"></div>
+                </div>
+                <div className="orbit-ring ring-2"></div>
+              </div>
+              <h1 className="form-title">Orbit</h1>
+            </div>
 
             <form onSubmit={handleSubmit} className="actual-form">
               <div className="input-group">

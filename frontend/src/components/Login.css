@@ -37,19 +37,71 @@
   width: 100%;
 }
 
-.form-title {
-  font-size: 28px;
-  font-weight: 700;
-  color: #333;
-  margin-bottom: 8px;
-  text-align: center;
+.brand-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 32px;
 }
 
-.form-subtitle {
-  font-size: 14px;
-  color: #666;
-  margin-bottom: 32px;
+.orbit-logo {
+  position: relative;
+  width: 60px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.center-dot {
+  width: 8px;
+  height: 8px;
+  background-color: #b07a7a;
+  border-radius: 50%;
+  box-shadow: 0 0 10px rgba(176, 122, 122, 0.4);
+}
+
+.orbit-ring {
+  position: absolute;
+  border: 1px solid rgba(176, 122, 122, 0.15);
+  border-radius: 50%;
+}
+
+.ring-1 {
+  width: 36px;
+  height: 36px;
+  animation: rotateOrbit 8s linear infinite;
+}
+
+.ring-2 {
+  width: 54px;
+  height: 54px;
+}
+
+.satellite {
+  position: absolute;
+  top: -3px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 6px;
+  height: 6px;
+  background-color: #b07a7a;
+  border-radius: 50%;
+}
+
+@keyframes rotateOrbit {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.form-title {
+  font-size: 32px;
+  font-weight: 500;
+  color: #333;
+  margin: 0;
   text-align: center;
+  letter-spacing: -0.5px;
 }
 
 .actual-form {
