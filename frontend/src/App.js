@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import MapView from "./components/MapView";
 import Login from "./components/Login";
+import ProfileModal from "./components/ProfileModal";
 import socket from "./components/SocketManager";
 import "./App.css";
 
@@ -24,6 +25,7 @@ function App() {
   const [theme, setTheme] = useState(localStorage.getItem("theme") || "dark");
   const [isFollowing, setIsFollowing] = useState(true);
   const [activePanel, setActivePanel] = useState(null); // 'chat', 'users', or null
+  const [showProfile, setShowProfile] = useState(false);
   
   // 💬 Chat State
   const [chatMessages, setChatMessages] = useState([]);
@@ -191,9 +193,14 @@ function App() {
             </div>
           ) : (
             chatMessages.map((msg, i) => (
-              <div key={i} className="chat-msg">
-                <span className="msg-user">{msg.user}:</span>
-                <span className="msg-text">{msg.text}</span>
+              <div key={i} className={`chat-msg ${msg.user === user.username ? "mine" : "other"}`}>
+                <div className="chat-bubble">
+                  {msg.user !== user.username && <span className="msg-user">{msg.user}</span>}
+                  <span className="msg-text">{msg.text}</span>
+                  <span className="msg-time">
+                    {new Date(msg.timestamp * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
               </div>
             ))
           )}
@@ -341,6 +348,16 @@ function App() {
       </button>
 
       {toast && <div className="toast">{toast}</div>}
+
+      <button className="profile-btn" onClick={() => setShowProfile(true)}>
+        <div className="avatar">
+          {user.username.charAt(0).toUpperCase()}
+        </div>
+      </button>
+
+      {showProfile && (
+        <ProfileModal user={user} onClose={() => setShowProfile(false)} />
+      )}
     </div>
   );
 }
