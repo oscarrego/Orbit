@@ -9,13 +9,19 @@ import "./App.css";
 const getPersistentUser = () => {
   const savedName = localStorage.getItem("username");
   let savedId = localStorage.getItem("userId");
+  let savedSeed = localStorage.getItem("avatarSeed");
   
   if (!savedId) {
     savedId = "user_" + Math.random().toString(36).substr(2, 9);
     localStorage.setItem("userId", savedId);
   }
+
+  if (!savedSeed && savedName) {
+    savedSeed = savedName;
+    localStorage.setItem("avatarSeed", savedSeed);
+  }
   
-  return { username: savedName, userId: savedId };
+  return { username: savedName, userId: savedId, avatarSeed: savedSeed || savedName };
 };
 
 function App() {
@@ -87,6 +93,7 @@ function App() {
         socket.emit("send_location", {
           id: user.userId,
           name: user.username,
+          avatarSeed: user.avatarSeed,
           ...coords,
         });
       },
@@ -98,7 +105,7 @@ function App() {
     );
 
     return () => navigator.geolocation.clearWatch(watchId);
-  }, [user.username, user.userId]);
+  }, [user.username, user.userId, user.avatarSeed]);
 
   // 🔑 Handle Login
   const handleLogin = (username, roomId) => {
@@ -108,14 +115,51 @@ function App() {
     localStorage.setItem("username", trimmed);
     if (roomId) localStorage.setItem("roomId", roomId.trim());
     
-    setUser((prev) => ({ ...prev, username: trimmed }));
+    // Set initial avatar seed as username if not exists
+    let seed = localStorage.getItem("avatarSeed");
+    if (!seed) {
+      seed = trimmed;
+      localStorage.setItem("avatarSeed", seed);
+    }
+
+    setUser((prev) => ({ ...prev, username: trimmed, avatarSeed: seed }));
     showToast(`👋 Welcome, ${trimmed}!`);
   };
 
   // 🚪 Handle Logout
   const handleLogout = () => {
     localStorage.removeItem("username");
+    localStorage.removeItem("avatarSeed");
     window.location.reload();
+  };
+
+  // 🎨 Update Avatar
+  const changeAvatar = () => {
+    const newSeed = Math.random().toString(36).substring(7);
+    localStorage.setItem("avatarSeed", newSeed);
+    setUser(prev => ({ ...prev, avatarSeed: newSeed }));
+    showToast("✨ Avatar updated!");
+  };
+
+  // 📝 Update Username
+  const updateUsername = (newName) => {
+    const trimmed = newName.trim();
+    if (!trimmed || trimmed === user.username) return;
+
+    localStorage.setItem("username", trimmed);
+    setUser(prev => ({ ...prev, username: trimmed }));
+
+    // Force instant socket sync
+    if (userLocation) {
+      socket.emit("send_location", {
+        id: user.userId,
+        name: trimmed,
+        avatarSeed: user.avatarSeed,
+        ...userLocation
+      });
+    }
+
+    showToast("✅ Name updated!");
   };
 
   // 💬 Handle Send Message
@@ -128,6 +172,7 @@ function App() {
       user: user.username,
       text: text,
       timestamp: Date.now() / 1000,
+      avatarSeed: user.avatarSeed,
     };
 
     socket.emit("send_message", msgData);
@@ -140,6 +185,7 @@ function App() {
     const data = {
       id: user.userId,
       name: user.username,
+      avatarSeed: user.avatarSeed,
       ...userLocation,
     };
 
@@ -195,7 +241,16 @@ function App() {
             chatMessages.map((msg, i) => (
               <div key={i} className={`chat-msg ${msg.user === user.username ? "mine" : "other"}`}>
                 <div className="chat-bubble">
-                  {msg.user !== user.username && <span className="msg-user">{msg.user}</span>}
+                  {msg.user !== user.username && (
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+                      <img 
+                        src={`https://api.dicebear.com/9.x/open-peeps/svg?seed=${msg.avatarSeed || msg.user}`} 
+                        alt="avatar" 
+                        style={{ width: "20px", height: "20px", borderRadius: "50%", background: "rgba(255,255,255,0.1)" }}
+                      />
+                      <span className="msg-user">{msg.user}</span>
+                    </div>
+                  )}
                   <span className="msg-text">{msg.text}</span>
                   <span className="msg-time">
                     {new Date(msg.timestamp * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -267,7 +322,11 @@ function App() {
                   }}
                 >
                   <div className="user-avatar">
-                    {u.name.charAt(0).toUpperCase()}
+                    <img 
+                      src={`https://api.dicebear.com/9.x/open-peeps/svg?seed=${u.avatarSeed || u.name}`} 
+                      alt={u.name} 
+                      style={{ width: "100%", height: "100%", borderRadius: "50%" }}
+                    />
                   </div>
                   <div className="user-info">
                     <span className="user-name">{u.name} {u.id === user.userId ? "(You)" : ""}</span>
@@ -351,12 +410,21 @@ function App() {
 
       <button className="profile-btn" onClick={() => setShowProfile(true)}>
         <div className="avatar">
-          {user.username.charAt(0).toUpperCase()}
+          <img 
+            src={`https://api.dicebear.com/9.x/open-peeps/svg?seed=${user.avatarSeed}`} 
+            alt="My Avatar" 
+            style={{ width: "100%", height: "100%", borderRadius: "50%" }}
+          />
         </div>
       </button>
 
       {showProfile && (
-        <ProfileModal user={user} onClose={() => setShowProfile(false)} />
+        <ProfileModal 
+          user={user} 
+          onClose={() => setShowProfile(false)} 
+          onChangeAvatar={changeAvatar}
+          onUpdateUsername={updateUsername}
+        />
       )}
     </div>
   );
