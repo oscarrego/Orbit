@@ -3,18 +3,35 @@ import './Login.css';
 
 const SpaceParticles = () => {
   const canvasRef = useRef(null);
-  const particles = useRef([]);
-  const shootingStars = useRef([]);
   const mouse = useRef({ x: null, y: null });
+  const prevMouse = useRef({ x: null, y: null });
+  const mouseVelocity = useRef({ x: 0, y: 0 });
+  const center = useRef({ x: null, y: null });
+  const particles = useRef([]);
+  const time = useRef(0);
 
   const handleMouseMove = (e) => {
     if (!canvasRef.current) return;
     const rect = canvasRef.current.getBoundingClientRect();
-    mouse.current.x = e.clientX - rect.left;
-    mouse.current.y = e.clientY - rect.top;
+    const newX = e.clientX - rect.left;
+    const newY = e.clientY - rect.top;
+
+    if (mouse.current.x !== null) {
+      prevMouse.current.x = mouse.current.x;
+      prevMouse.current.y = mouse.current.y;
+      mouseVelocity.current.x = newX - prevMouse.current.x;
+      mouseVelocity.current.y = newY - prevMouse.current.y;
+    } else {
+      prevMouse.current.x = newX;
+      prevMouse.current.y = newY;
+    }
+
+    mouse.current.x = newX;
+    mouse.current.y = newY;
   };
 
   const handleMouseLeave = () => {
+    if (!canvasRef.current) return;
     mouse.current.x = null;
     mouse.current.y = null;
   };
@@ -27,42 +44,37 @@ const SpaceParticles = () => {
     const resize = () => {
       canvas.width = canvas.offsetWidth;
       canvas.height = canvas.offsetHeight;
+      if (center.current.x === null || isNaN(center.current.x)) {
+        center.current.x = canvas.width / 2;
+        center.current.y = canvas.height / 2;
+      }
       initParticles();
     };
 
     const initParticles = () => {
       particles.current = [];
-      const layers = [
-        { count: 120, size: [0.4, 0.8], speed: 0.02, opacity: [0.1, 0.3] },
-        { count: 60,  size: [0.8, 1.5], speed: 0.05, opacity: [0.3, 0.6] },
-        { count: 25,  size: [1.5, 2.5], speed: 0.12, opacity: [0.6, 0.9] }
-      ];
-
-      layers.forEach(layer => {
-        for (let i = 0; i < layer.count; i++) {
-          particles.current.push({
-            x: Math.random() * canvas.width,
-            y: Math.random() * canvas.height,
-            size: Math.random() * (layer.size[1] - layer.size[0]) + layer.size[0],
-            vx: (Math.random() - 0.5) * layer.speed,
-            vy: (Math.random() - 0.5) * layer.speed,
-            opacity: Math.random() * (layer.opacity[1] - layer.opacity[0]) + layer.opacity[0],
-            twinkleSpeed: Math.random() * 0.005 + 0.002,
-            layerSpeed: layer.speed,
-            color: `rgba(200, 220, 255,`
-          });
-        }
-      });
-    };
-
-    const spawnShootingStar = () => {
-      if (Math.random() > 0.998) {
-        shootingStars.current.push({
-          x: Math.random() * (canvas.width * 0.5),
-          y: Math.random() * (canvas.height * 0.5),
-          len: Math.random() * 120 + 80,
-          speed: Math.random() * 12 + 8,
-          opacity: 1,
+      const numParticles = 350; // Low/medium density, airy
+      const maxRadius = Math.min(canvas.width, canvas.height) * 0.45; // Must stay within viewport
+      const goldenRatio = (1 + Math.sqrt(5)) / 2;
+      
+      for (let i = 0; i < numParticles; i++) {
+        const distRatio = Math.sqrt(i / (numParticles - 1));
+        const angle = i * goldenRatio * Math.PI * 2;
+        const baseRadius = distRatio * maxRadius;
+        
+        particles.current.push({
+          angle,
+          distRatio,
+          baseRadius,
+          driftAngleX: Math.random() * Math.PI * 2,
+          driftAngleY: Math.random() * Math.PI * 2,
+          driftSpeedX: Math.random() * 0.002 + 0.0005,
+          driftSpeedY: Math.random() * 0.002 + 0.0005,
+          driftAmplitude: Math.random() * 12 + 4,
+          sizeModifier: Math.random() * 0.4 + 0.8,
+          lagFactor: Math.random() * 0.15 + 0.05, // Individual random lag to prevent rigid movement
+          flowOffsetX: 0,
+          flowOffsetY: 0,
         });
       }
     };
@@ -73,71 +85,95 @@ const SpaceParticles = () => {
     let animationFrameId;
     const animate = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+      time.current += 0.0065; // Slightly faster breathing (~30% increase)
+
+      // Decay mouse velocity to smooth out the flow
+      mouseVelocity.current.x *= 0.92;
+      mouseVelocity.current.y *= 0.92;
+
+      if (mouse.current.x !== null && mouse.current.y !== null) {
+        // Center follows very slightly, but not fully attached
+        center.current.x += (mouse.current.x - center.current.x) * 0.015;
+        center.current.y += (mouse.current.y - center.current.y) * 0.015;
+      } else {
+        // Slowly return to middle when mouse leaves
+        center.current.x += (canvas.width / 2 - center.current.x) * 0.01;
+        center.current.y += (canvas.height / 2 - center.current.y) * 0.01;
+      }
 
       particles.current.forEach((p) => {
-        p.x += p.vx;
-        p.y += p.vy;
+        p.driftAngleX += p.driftSpeedX;
+        p.driftAngleY += p.driftSpeedY;
+        
+        const driftX = Math.cos(p.driftAngleX) * p.driftAmplitude;
+        const driftY = Math.sin(p.driftAngleY) * p.driftAmplitude;
 
-        if (p.x < 0) p.x = canvas.width;
-        if (p.x > canvas.width) p.x = 0;
-        if (p.y < 0) p.y = canvas.height;
-        if (p.y > canvas.height) p.y = 0;
+        const breathAmplitude = 18 + p.distRatio * 12;
+        const radius = p.baseRadius + Math.sin(time.current * 1.5) * breathAmplitude;
+        
+        // Target base position on the breathing sphere
+        let targetX = center.current.x + Math.cos(p.angle) * radius + driftX;
+        let targetY = center.current.y + Math.sin(p.angle) * radius + driftY;
 
-        if (mouse.current.x !== null) {
-          const dx = p.x - mouse.current.x;
-          const dy = p.y - mouse.current.y;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          const maxDist = 150;
+        // Apply directional flow (space consumption)
+        if (Math.abs(mouseVelocity.current.x) > 0.1 || Math.abs(mouseVelocity.current.y) > 0.1) {
+          // Particles move in the direction of the mouse, but at different speeds (lag)
+          // This naturally pushes particles away in front of the cursor and pulls them in from behind
+          p.flowOffsetX += mouseVelocity.current.x * p.lagFactor;
+          p.flowOffsetY += mouseVelocity.current.y * p.lagFactor;
+        }
 
-          if (dist < maxDist) {
-            const force = (maxDist - dist) / maxDist;
-            p.x += (dx / dist) * force * (p.layerSpeed * 10);
-            p.y += (dy / dist) * force * (p.layerSpeed * 10);
+        // Slowly decay the flow offset back to the base sphere shape
+        p.flowOffsetX *= 0.95;
+        p.flowOffsetY *= 0.95;
+
+        let px = targetX + p.flowOffsetX;
+        let py = targetY + p.flowOffsetY;
+
+        // Clamp positions strictly inside viewport bounds
+        const padding = 6;
+        if (px < padding) px = padding;
+        if (px > canvas.width - padding) px = canvas.width - padding;
+        if (py < padding) py = padding;
+        if (py > canvas.height - padding) py = canvas.height - padding;
+
+        let baseSize = (1.8 - p.distRatio * 1.0) * p.sizeModifier;
+        let baseOpacity = 0.65 - p.distRatio * 0.45;
+
+        if (mouse.current.x !== null && mouse.current.y !== null) {
+          const dx = px - mouse.current.x;
+          const dy = py - mouse.current.y;
+          const distToMouse = Math.sqrt(dx * dx + dy * dy);
+          const emptyRadius = 130; // Clear void around cursor
+
+          if (distToMouse < emptyRadius) {
+            baseOpacity = 0; // Empty void inside radius
+          } else if (distToMouse < emptyRadius + 100) {
+            const fade = (distToMouse - emptyRadius) / 100;
+            baseOpacity *= fade;
+            
+            // Very subtle outward displacement near the void boundary
+            const force = (1 - fade) * 8;
+            px += (dx / distToMouse) * force;
+            py += (dy / distToMouse) * force;
           }
         }
 
-        p.opacity += p.twinkleSpeed;
-        if (p.opacity > 0.9 || p.opacity < 0.1) p.twinkleSpeed *= -1;
-
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        ctx.fillStyle = `${p.color} ${p.opacity})`;
-        ctx.shadowBlur = p.size * 3;
-        ctx.shadowColor = "rgba(180, 200, 255, 0.8)";
-        ctx.fill();
-        ctx.shadowBlur = 0; 
-      });
-
-      spawnShootingStar();
-      shootingStars.current.forEach((s, index) => {
-        s.x += s.speed;
-        s.y += s.speed * 0.5;
-        s.opacity -= 0.015;
-
-        if (s.opacity <= 0) {
-          shootingStars.current.splice(index, 1);
-        } else {
-          ctx.save();
-          const grad = ctx.createLinearGradient(s.x, s.y, s.x - s.len, s.y - s.len * 0.5);
-          grad.addColorStop(0, `rgba(255, 255, 255, ${s.opacity})`);
-          grad.addColorStop(0.2, `rgba(180, 210, 255, ${s.opacity * 0.5})`);
-          grad.addColorStop(1, "rgba(180, 210, 255, 0)");
-          
+        if (baseOpacity > 0.01) {
           ctx.beginPath();
-          ctx.strokeStyle = grad;
-          ctx.lineWidth = 1.2;
-          ctx.lineCap = "round";
-          ctx.shadowBlur = 10;
-          ctx.shadowColor = "rgba(180, 210, 255, 0.8)";
-          ctx.moveTo(s.x, s.y);
-          ctx.lineTo(s.x - s.len, s.y - s.len * 0.5);
-          ctx.stroke();
+          ctx.arc(px, py, Math.max(0.1, baseSize), 0, Math.PI * 2);
           
-          ctx.beginPath();
-          ctx.fillStyle = `rgba(255, 255, 255, ${s.opacity})`;
-          ctx.arc(s.x, s.y, 1, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(220, 235, 255, ${baseOpacity})`;
+          
+          if (p.distRatio < 0.2) {
+            ctx.shadowBlur = baseSize * 2;
+            ctx.shadowColor = `rgba(220, 235, 255, ${baseOpacity * 0.5})`;
+          } else {
+            ctx.shadowBlur = 0;
+          }
+          
           ctx.fill();
-          ctx.restore();
+          ctx.shadowBlur = 0;
         }
       });
 
