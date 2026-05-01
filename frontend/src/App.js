@@ -243,14 +243,7 @@ function App() {
               <div key={i} className={`chat-msg ${msg.user === user.username ? "mine" : "other"}`}>
                 <div className="chat-bubble">
                   {msg.user !== user.username && (
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
-                      <img 
-                        src={`https://api.dicebear.com/9.x/open-peeps/svg?seed=${msg.avatarSeed || msg.user}`} 
-                        alt="avatar" 
-                        style={{ width: "20px", height: "20px", borderRadius: "50%", background: "rgba(255,255,255,0.1)" }}
-                      />
-                      <span className="msg-user">{msg.user}</span>
-                    </div>
+                    <span className="msg-user">{msg.user}</span>
                   )}
                   <span className="msg-text">{msg.text}</span>
                   <span className="msg-time">
@@ -312,29 +305,30 @@ function App() {
           <h3>Nearby Users</h3>
           <div className="user-list">
             {users.length > 0 ? (
-              users.map((u) => (
-                <div 
-                  key={u.id} 
-                  className="user-item"
-                  onClick={() => {
-                    mapRef.current?.handleCenterOnUser(u.lng, u.lat);
-                    setIsFollowing(false);
-                    showToast(`📍 Tracking ${u.name}`);
-                  }}
-                >
-                  <div className="user-avatar">
-                    <img 
-                      src={`https://api.dicebear.com/9.x/open-peeps/svg?seed=${u.avatarSeed || u.name}`} 
-                      alt={u.name} 
-                      style={{ width: "100%", height: "100%", borderRadius: "50%" }}
-                    />
+              [...users]
+                .sort((a, b) => (a.id === user.userId ? -1 : b.id === user.userId ? 1 : 0))
+                .map((u, i) => (
+                  <div key={u.id}>
+                    <div 
+                      className={`user-item ${u.id === user.userId ? "current" : ""}`}
+                      onClick={() => {
+                        mapRef.current?.handleCenterOnUser(u.lng, u.lat);
+                        setIsFollowing(false);
+                        showToast(`📍 Tracking ${u.name}`);
+                      }}
+                    >
+                      <div className="user-info">
+                        <span className="user-name">
+                          {u.name} {u.id === user.userId ? <span className="you-label">(You)</span> : ""}
+                        </span>
+                        <span className="user-status">Online now</span>
+                      </div>
+                    </div>
+                    {u.id === user.userId && users.length > 1 && (
+                      <div className="user-divider"></div>
+                    )}
                   </div>
-                  <div className="user-info">
-                    <span className="user-name">{u.name} {u.id === user.userId ? "(You)" : ""}</span>
-                    <span className="user-status">Online now</span>
-                  </div>
-                </div>
-              ))
+                ))
             ) : (
               <div className="no-users">No users nearby</div>
             )}

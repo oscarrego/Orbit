@@ -220,6 +220,29 @@
   gap: 12px;
 }
 
+/* ✨ Premium Custom Scrollbar */
+.chat-messages::-webkit-scrollbar {
+  width: 5px;
+}
+
+.chat-messages::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.chat-messages::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  transition: background 0.3s ease;
+}
+
+.chat-messages:hover::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.chat-messages::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
 .chat-msg {
   display: flex;
   margin: 6px 0;
@@ -424,6 +447,35 @@
 .user-item:hover { 
   background: rgba(255, 255, 255, 0.04); 
 }
+
+.user-item.current {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+}
+
+.user-item.current .user-name {
+  font-weight: 600;
+}
+
+.you-label {
+  opacity: 0.5;
+  font-weight: 400;
+  font-size: 0.9em;
+  margin-left: 4px;
+}
+
+.user-divider {
+  height: 1px;
+  background: linear-gradient(
+    90deg, 
+    rgba(255, 255, 255, 0) 0%, 
+    rgba(255, 255, 255, 0.08) 20%, 
+    rgba(255, 255, 255, 0.08) 80%, 
+    rgba(255, 255, 255, 0) 100%
+  );
+  margin: 12px 8px;
+}
+
 .user-name {
   color: #e2e8f0;
 }
@@ -495,19 +547,6 @@ body.light-mode::before {
     inset 0 1px 0 rgba(255, 255, 255, 0.2);
   border: 1px solid rgba(255, 255, 255, 0.1);
   overflow: hidden;
-}
-
-.user-avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.05);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  flex-shrink: 0;
 }
 
 /* 🖼️ Profile Modal (Glassmorphism) */
