@@ -28,6 +28,7 @@ function App() {
   const [users, setUsers] = useState([]);
   const [toast, setToast] = useState(null);
   const [sosAlerts, setSosAlerts] = useState([]);
+  const [isSOSActive, setIsSOSActive] = useState(false);
   const [userLocation, setUserLocation] = useState(null);
     
   const [theme, setTheme] = useState(localStorage.getItem("theme") || "dark");
@@ -213,15 +214,22 @@ function App() {
   const handleSOS = () => {
     if (!userLocation || !user.username) return;
     
-    const data = {
-      id: user.userId,
-      name: user.username,
-      avatarSeed: user.avatarSeed,
-      ...userLocation,
-    };
+    if (isSOSActive) {
+      setSosAlerts(prev => prev.filter(alert => alert.id !== user.userId));
+      setIsSOSActive(false);
+      showToast("✅ SOS Cancelled");
+    } else {
+      const data = {
+        id: user.userId,
+        name: user.username,
+        avatarSeed: user.avatarSeed,
+        ...userLocation,
+      };
 
-    socket.emit("sos_alert", data);
-    showToast("🚨 SOS button clicked!");
+      socket.emit("sos_alert", data);
+      setIsSOSActive(true);
+      showToast("🚨 SOS Sent!");
+    }
   };
 
   const showToast = (message) => {
@@ -451,13 +459,22 @@ function App() {
         </button>
       </div>
 
-      <button className="sos-btn" onClick={handleSOS}>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 20, height: 20 }}>
-          <circle cx="12" cy="12" r="10" />
-          <line x1="12" y1="8" x2="12" y2="12" />
-          <line x1="12" y1="16" x2="12.01" y2="16" />
-        </svg>
-        <span>SOS</span>
+      <button
+        className={`sos-btn ${isSOSActive ? "active" : ""}`}
+        onClick={handleSOS}
+      >
+        {/* 👇 Show icon ONLY when NOT active */}
+        {!isSOSActive && (
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+            style={{ width: 20, height: 20 }}>
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+        )}
+
+        <span>{isSOSActive ? "CANCEL" : "SOS"}</span>
       </button>
 
       {toast && <div className="toast">{toast}</div>}

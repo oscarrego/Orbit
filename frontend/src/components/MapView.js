@@ -294,9 +294,9 @@ const MapView = forwardRef(({ users, userLocation, theme, isFollowing, setIsFoll
             14, 30,
             18, 80
           ],
-          "circle-color": "rgba(255, 0, 0, 0.25)",
-          "circle-stroke-color": "rgba(254, 73, 73, 0.41)",
-          "circle-stroke-width": 3
+          "circle-color": "rgb(252, 147, 147)",
+          "circle-stroke-color": "rgba(251, 62, 62, 0.87)",
+          "circle-stroke-width": 1
         }
       });
 
