@@ -399,7 +399,7 @@ function App() {
                       >
                         <div className="user-info">
                           <span className="user-name">
-                            {u.name} {u.id === user.userId ? <span className="you-label">(You)</span> : ""}
+                            {u.name} {u.id === user.userId ? <span className="you-label"></span> : ""}
                           </span>
                           <span className="user-status">
                             Online now {distance && u.id !== user.userId && <span className="distance" style={{ opacity: 0.7 }}> • {distance}</span>}
