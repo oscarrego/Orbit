@@ -151,36 +151,50 @@ input, button, textarea, select {
   top: 30px;
   left: 50%;
   transform: translateX(-50%);
+
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 
   padding: 14px 22px;
-  border-radius: 14px;
+  border-radius: 16px;
 
   font-size: 14px;
   font-weight: 600;
   color: white;
 
-  backdrop-filter: blur(12px);
-  box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+  /* MICA BLACK EFFECT */
+  background: rgba(20, 20, 20, 0.65);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
 
-  animation: toastIn 0.3s ease;
+  border: 1px solid rgba(255,255,255,0.08);
+
+  box-shadow:
+    0 10px 30px rgba(0,0,0,0.4),
+    inset 0 1px 0 rgba(255,255,255,0.06);
+
+  animation: toastIn 0.25s ease;
+
   z-index: 10000;
 }
 
-.toast.sos {
-  background: linear-gradient(135deg, #ef4444, #b91c1c);
+/* subtle accent colors */
+
+.icon {
+  width: 18px;
+  height: 18px;
+  opacity: 0.9;
 }
 
-.toast.cancel {
-  background: linear-gradient(135deg, #22c55e, #15803d);
+.text {
+  letter-spacing: 0.3px;
 }
 
 @keyframes toastIn {
   from {
     opacity: 0;
-    transform: translate(-50%, -20px);
+    transform: translate(-50%, -15px);
   }
   to {
     opacity: 1;
@@ -224,3 +238,48 @@ input, button, textarea, select {
   }
 }
 
+
+
+/*  */
+/* 🔄 rotation */
+.radar-rotate {
+  transform-origin: center;
+  animation: rotateRadar 2.5s linear infinite;
+}
+
+/* 💥 pulse */
+
+.sweep {
+  transform-origin: center;
+  animation: sweepRotate 2s linear infinite;
+}
+
+@keyframes sweepRotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+
+
+/* subtle pulse ring */
+
+.follow-fly {
+  animation: flyAway 2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes flyAway {
+  0% {
+    transform: translate(0, 15px) scale(1) rotate(0deg);
+    opacity: 1;
+  }
+
+  40% {
+    transform: translate(6px, -6px) scale(1.05) rotate(-5deg);
+    opacity: 1;
+  }
+
+  100% {
+    transform: translate(28px, -28px) scale(0.6) rotate(-15deg);
+    opacity: 0;
+  }
+}

@@ -394,7 +394,7 @@ function App() {
                         onClick={() => {
                           mapRef.current?.handleCenterOnUser(u.lng, u.lat);
                           setIsFollowing(false);
-                          showToast(`📍 Tracking ${u.name}`);
+                          showToast(`Tracking ${u.name}`, "tracking");
                         }}
                       >
                         <div className="user-info">
@@ -435,7 +435,10 @@ function App() {
           className={`control-btn ${isFollowing ? "active" : ""}`} 
           onClick={() => {
             setIsFollowing(!isFollowing);
-            showToast(isFollowing ? "🛰️ Follow Me: OFF" : "🛰️ Follow Me: ON");
+            showToast(
+              isFollowing ? "Follow Me OFF" : "Follow Me ON",
+              "follow"
+            );
           }}
           title={isFollowing ? "Disable Follow Me" : "Enable Follow Me"}
         >
@@ -510,18 +513,37 @@ function App() {
 
       {toast && (
         <div className={`toast ${toast.type}`}>
-          {toast.type === "sos" ? (
-            <svg viewBox="0 0 24 24" width="18" height="18">
-              <circle cx="12" cy="12" r="10" stroke="white" strokeWidth="2" fill="none"/>
-              <line x1="12" y1="7" x2="12" y2="13" stroke="white" strokeWidth="2"/>
-              <circle cx="12" cy="17" r="1.5" fill="white"/>
+          {/* ICON */}
+          {toast.type === "tracking" && (
+            <svg className="icon radar-sweep" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="9" stroke="white" strokeWidth="2" opacity="0.3"/>
+              <path className="sweep" d="M12 3 A9 9 0 0 1 21 12" stroke="white" strokeWidth="2"/>
+              <circle cx="12" cy="12" r="2" fill="white"/>
             </svg>
-          ) : toast.type === "cancel" ? (
-            <svg viewBox="0 0 24 24" width="18" height="18">
-              <path d="M20 6L9 17l-5-5" stroke="white" strokeWidth="2" fill="none"/>
+          )}
+
+          {toast.type === "follow" && (    
+            <svg className="icon follow-fly" viewBox="0 0 24 24" fill="none">
+              <path d="M3 11L22 2L13 21L11 13L3 11Z"
+                stroke="white" strokeWidth="2"/>
             </svg>
-          ) : null}
-          <span>{toast.message}</span>
+          )}
+
+          {toast.type === "sos" && (
+            <svg className="icon" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="10" stroke="white" strokeWidth="2"/>
+              <line x1="12" y1="8" x2="12" y2="12" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+              <line x1="12" y1="16" x2="12.01" y2="16" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+          )}
+
+          {toast.type === "cancel" && (
+            <svg className="icon" viewBox="0 0 24 24" fill="none">
+              <path d="M20 6L9 17L4 12" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          )}
+
+          <span className="text">{toast.message}</span>
         </div>
       )}
 
