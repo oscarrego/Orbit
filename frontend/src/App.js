@@ -374,6 +374,29 @@ function App() {
 
       {/* 🛠️ CONTROL CLUSTER */}
       <div className="control-cluster">
+        <button className="profile-btn" onClick={() => setShowProfile(true)}>
+          <div className="avatar">
+            <img 
+              src={`https://api.dicebear.com/9.x/open-peeps/svg?seed=${user.avatarSeed}`} 
+              alt="My Avatar" 
+              style={{ width: "100%", height: "100%", borderRadius: "50%" }}
+            />
+          </div>
+        </button>
+
+        <button 
+          className={`control-btn ${isFollowing ? "active" : ""}`} 
+          onClick={() => {
+            setIsFollowing(!isFollowing);
+            showToast(isFollowing ? "🛰️ Follow Me: OFF" : "🛰️ Follow Me: ON");
+          }}
+          title={isFollowing ? "Disable Follow Me" : "Enable Follow Me"}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
+          </svg>
+        </button>
+
         <button 
           className="control-btn" 
           onClick={() => {
@@ -392,19 +415,6 @@ function App() {
             <line x1="12" y1="6" x2="12" y2="2"></line>
             <line x1="12" y1="22" x2="12" y2="18"></line>
             <circle cx="12" cy="12" r="3"></circle>
-          </svg>
-        </button>
-
-        <button 
-          className={`control-btn ${isFollowing ? "active" : ""}`} 
-          onClick={() => {
-            setIsFollowing(!isFollowing);
-            showToast(isFollowing ? "🛰️ Follow Me: OFF" : "🛰️ Follow Me: ON");
-          }}
-          title={isFollowing ? "Disable Follow Me" : "Enable Follow Me"}
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
           </svg>
         </button>
 
@@ -438,16 +448,6 @@ function App() {
       </button>
 
       {toast && <div className="toast">{toast}</div>}
-
-      <button className="profile-btn" onClick={() => setShowProfile(true)}>
-        <div className="avatar">
-          <img 
-            src={`https://api.dicebear.com/9.x/open-peeps/svg?seed=${user.avatarSeed}`} 
-            alt="My Avatar" 
-            style={{ width: "100%", height: "100%", borderRadius: "50%" }}
-          />
-        </div>
-      </button>
 
       {showProfile && (
         <ProfileModal 

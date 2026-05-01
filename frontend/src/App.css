@@ -73,7 +73,7 @@
   right: 20px;
   z-index: 9999;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   gap: 12px;
 }
 
@@ -563,13 +563,9 @@ body.light-mode::before {
 
 /* 👤 Profile Avatar Button */
 .profile-btn {
-  position: fixed;
-  top: 20px;
-  right: 80px; /* Offset to the left of the control cluster */
   background: none;
   border: none;
   cursor: pointer;
-  z-index: 10000;
   transition: transform 0.2s ease;
   padding: 0;
 }
