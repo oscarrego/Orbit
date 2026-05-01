@@ -222,6 +222,7 @@ function App() {
         isFollowing={isFollowing} 
         setIsFollowing={setIsFollowing}
         onAutoDisableFollowing={handleAutoDisableFollowing}
+        currentUserId={user.userId}
       />
 
       {/* 💬 CHAT PANEL (Mica Dark) */}

@@ -2,7 +2,56 @@ import { useEffect, useRef, forwardRef, useImperativeHandle } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 
-const MapView = forwardRef(({ users, userLocation, theme, isFollowing, setIsFollowing, onAutoDisableFollowing }, ref) => {
+const MARKER_PALETTE = [
+  "#FF3B30", // Red
+  "#FF9500", // Orange
+  "#FFCC00", // Yellow
+  "#34C759", // Green
+  "#5AC8FA", // Light Blue
+  "#007AFF", // Blue
+  "#5856D6", // Purple
+  "#FF2D55", // Pink
+  "#AF52DE", // Indigo
+  "#FF6B6B", // Coral
+];
+
+const hashString = (str) => {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash << 5) - hash + str.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash);
+};
+
+const getDeterministicOffset = (userId) => {
+  const hash = hashString(userId);
+  const angle = (hash % 360) * (Math.PI / 180);
+  const radius = 0.00003; // ~3 meters
+  return {
+    lngOffset: Math.cos(angle) * radius,
+    latOffset: Math.sin(angle) * radius,
+  };
+};
+
+const getDeterministicColor = (userId) => {
+  const hash = hashString(userId);
+  return MARKER_PALETTE[hash % MARKER_PALETTE.length];
+};
+
+const decorationCache = new Map();
+
+const getDecorations = (id) => {
+  if (!decorationCache.has(id)) {
+    decorationCache.set(id, {
+      ...getDeterministicOffset(id),
+      color: getDeterministicColor(id),
+    });
+  }
+  return decorationCache.get(id);
+};
+
+const MapView = forwardRef(({ users, userLocation, theme, isFollowing, setIsFollowing, onAutoDisableFollowing, currentUserId }, ref) => {
   const mapContainer = useRef(null);
   const map = useRef(null);
   const markers = useRef({});
@@ -59,8 +108,9 @@ const MapView = forwardRef(({ users, userLocation, theme, isFollowing, setIsFoll
   useImperativeHandle(ref, () => ({
     handleRecenter: () => {
       if (map.current && userLocation) {
+        const { lngOffset, latOffset } = getDecorations(currentUserId);
         map.current.easeTo({
-          center: [userLocation.lng, userLocation.lat],
+          center: [userLocation.lng + lngOffset, userLocation.lat + latOffset],
           zoom: 17,
           duration: 1000,
           essential: true,
@@ -81,9 +131,12 @@ const MapView = forwardRef(({ users, userLocation, theme, isFollowing, setIsFoll
 
   // 🎯 Update Blue Dot Marker
   useEffect(() => {
-    if (!map.current || !userLocation) return;
+    if (!map.current || !userLocation || !currentUserId) return;
 
     const { lng, lat, heading } = userLocation;
+    const { lngOffset, latOffset, color } = getDecorations(currentUserId);
+    const targetLng = lng + lngOffset;
+    const targetLat = lat + latOffset;
 
     if (!userMarker.current) {
       const el = document.createElement("div");
@@ -99,14 +152,27 @@ const MapView = forwardRef(({ users, userLocation, theme, isFollowing, setIsFoll
         element: el,
         anchor: "center",
       })
-        .setLngLat([lng, lat])
+        .setLngLat([targetLng, targetLat])
         .addTo(map.current);
     } else {
-      userMarker.current.setLngLat([lng, lat]);
+      userMarker.current.setLngLat([targetLng, targetLat]);
     }
 
     const el = userMarker.current.getElement();
     const cone = el.querySelector(".direction-cone");
+    const dot = el.querySelector(".center-dot");
+    const glow = el.querySelector(".glow-ring");
+    const pulse = el.querySelector(".pulse-ring");
+
+    // Apply unique color with brightness highlight for current user
+    if (dot) {
+      dot.style.backgroundColor = color;
+      dot.style.borderColor = "white";
+      dot.style.boxShadow = `0 0 10px ${color}`;
+    }
+    if (glow) glow.style.backgroundColor = color;
+    if (pulse) pulse.style.backgroundColor = color;
+    if (cone) cone.style.borderBottomColor = color;
     
     if (heading !== null && heading !== undefined) {
       cone.style.transform = `rotate(${heading}deg)`;
@@ -116,16 +182,16 @@ const MapView = forwardRef(({ users, userLocation, theme, isFollowing, setIsFoll
     }
 
     if (!initialCenterSet.current) {
-      map.current.jumpTo({ center: [lng, lat] });
+      map.current.jumpTo({ center: [targetLng, targetLat] });
       initialCenterSet.current = true;
     } else if (isFollowing) {
       map.current.easeTo({
-        center: [lng, lat],
+        center: [targetLng, targetLat],
         duration: 800,
         essential: true,
       });
     }
-  }, [userLocation, theme, isFollowing]);
+  }, [userLocation, theme, isFollowing, currentUserId]);
 
   const add3D = () => {
     if (!map.current || map.current.getLayer("3d-buildings")) return;
@@ -151,36 +217,41 @@ const MapView = forwardRef(({ users, userLocation, theme, isFollowing, setIsFoll
   };
 
   useEffect(() => {
-    if (!map.current) return;
+    if (!map.current || !currentUserId) return;
 
     users.forEach((user) => {
-      if (user.id === "user1") return;
+      if (user.id === currentUserId) return;
+
+      const { lngOffset, latOffset, color } = getDecorations(user.id);
 
       if (!markers.current[user.id]) {
         const el = document.createElement("div");
         el.className = "marker";
-        el.style.width = "10px";
-        el.style.height = "10px";
-        el.style.backgroundColor = "red";
+        el.style.width = "12px";
+        el.style.height = "12px";
+        el.style.backgroundColor = color;
         el.style.borderRadius = "50%";
+        el.style.border = "2px solid white";
+        el.style.boxShadow = "0 2px 4px rgba(0,0,0,0.3)";
 
         const marker = new maplibregl.Marker({ element: el })
-          .setLngLat([user.lng, user.lat])
+          .setLngLat([user.lng + lngOffset, user.lat + latOffset])
           .addTo(map.current);
 
         markers.current[user.id] = marker;
       } else {
-        markers.current[user.id].setLngLat([user.lng, user.lat]);
+        markers.current[user.id].setLngLat([user.lng + lngOffset, user.lat + latOffset]);
+        markers.current[user.id].getElement().style.backgroundColor = color;
       }
     });
 
     Object.keys(markers.current).forEach((id) => {
-      if (!users.find((u) => u.id === id) && id !== "user1") {
+      if (!users.find((u) => u.id === id)) {
         markers.current[id].remove();
         delete markers.current[id];
       }
     });
-  }, [users, theme]);
+  }, [users, theme, currentUserId]);
 
   return (
     <div 
