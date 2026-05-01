@@ -157,7 +157,6 @@ function App() {
     const newSeed = Math.random().toString(36).substring(7);
     localStorage.setItem("avatarSeed", newSeed);
     setUser(prev => ({ ...prev, avatarSeed: newSeed }));
-    showToast("✨ Avatar updated!");
   };
 
   // 📝 Update Username
@@ -250,6 +249,22 @@ function App() {
       setIsFollowing(false);
     }
   };
+
+  // 📏 Haversine distance formula
+  function getDistanceKm(lat1, lon1, lat2, lon2) {
+    const R = 6371; // Earth radius in km
+    const dLat = (lat2 - lat1) * (Math.PI / 180);
+    const dLon = (lon2 - lon1) * (Math.PI / 180);
+
+    const a =
+      Math.sin(dLat / 2) ** 2 +
+      Math.cos(lat1 * Math.PI / 180) *
+      Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLon / 2) ** 2;
+
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  }
 
   return (
     <div style={{ width: "100vw", height: "100vh", position: "relative", overflow: "hidden" }} className={`${theme}-mode`}>
@@ -359,28 +374,44 @@ function App() {
             {users.length > 0 ? (
               [...users]
                 .sort((a, b) => (a.id === user.userId ? -1 : b.id === user.userId ? 1 : 0))
-                .map((u, i) => (
-                  <div key={u.id}>
-                    <div 
-                      className={`user-item ${u.id === user.userId ? "current" : ""}`}
-                      onClick={() => {
-                        mapRef.current?.handleCenterOnUser(u.lng, u.lat);
-                        setIsFollowing(false);
-                        showToast(`📍 Tracking ${u.name}`);
-                      }}
-                    >
-                      <div className="user-info">
-                        <span className="user-name">
-                          {u.name} {u.id === user.userId ? <span className="you-label">(You)</span> : ""}
-                        </span>
-                        <span className="user-status">Online now</span>
+                .map((u, i) => {
+                  let distance = "Calculating...";
+
+                  if (userLocation && u.lat && u.lng) {
+                    const d = getDistanceKm(
+                      userLocation.lat,
+                      userLocation.lng,
+                      u.lat,
+                      u.lng
+                    );
+                    distance = `${d.toFixed(2)} km`;
+                  }
+
+                  return (
+                    <div key={u.id}>
+                      <div 
+                        className={`user-item ${u.id === user.userId ? "current" : ""}`}
+                        onClick={() => {
+                          mapRef.current?.handleCenterOnUser(u.lng, u.lat);
+                          setIsFollowing(false);
+                          showToast(`📍 Tracking ${u.name}`);
+                        }}
+                      >
+                        <div className="user-info">
+                          <span className="user-name">
+                            {u.name} {u.id === user.userId ? <span className="you-label">(You)</span> : ""}
+                          </span>
+                          <span className="user-status">
+                            Online now {distance && u.id !== user.userId && <span className="distance" style={{ opacity: 0.7 }}> • {distance}</span>}
+                          </span>
+                        </div>
                       </div>
+                      {u.id === user.userId && users.length > 1 && (
+                        <div className="user-divider"></div>
+                      )}
                     </div>
-                    {u.id === user.userId && users.length > 1 && (
-                      <div className="user-divider"></div>
-                    )}
-                  </div>
-                ))
+                  );
+                })
             ) : (
               <div className="no-users">No users nearby</div>
             )}
