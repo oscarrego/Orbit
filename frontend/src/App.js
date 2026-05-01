@@ -36,6 +36,8 @@ function App() {
   // 💬 Chat State
   const [chatMessages, setChatMessages] = useState([]);
   const [msgInput, setMsgInput] = useState("");
+  const [currentRoom, setCurrentRoom] = useState(localStorage.getItem("roomId") || "Global");
+  const [roomInput, setRoomInput] = useState("");
   const chatEndRef = useRef(null);
   
   // 🔑 Auth State
@@ -49,6 +51,11 @@ function App() {
 
   // 🔌 Socket Listeners
   useEffect(() => {
+    // Initial join if logged in
+    if (user.username) {
+      socket.emit("join_room", { room: currentRoom });
+    }
+
     socket.on("update_users", (data) => {
       const unique = {};
       data.forEach((u) => {
@@ -70,7 +77,7 @@ function App() {
       socket.off("load_messages");
       socket.off("receive_message");
     };
-  }, []);
+  }, [user.username, currentRoom]);
 
   // 📜 Auto-scroll chat
   useEffect(() => {
@@ -112,8 +119,10 @@ function App() {
     const trimmed = username.trim();
     if (!trimmed) return;
 
+    const finalRoom = roomId?.trim() || "Global";
     localStorage.setItem("username", trimmed);
-    if (roomId) localStorage.setItem("roomId", roomId.trim());
+    localStorage.setItem("roomId", finalRoom);
+    setCurrentRoom(finalRoom);
     
     // Set initial avatar seed as username if not exists
     let seed = localStorage.getItem("avatarSeed");
@@ -123,6 +132,7 @@ function App() {
     }
 
     setUser((prev) => ({ ...prev, username: trimmed, avatarSeed: seed }));
+    socket.emit("join_room", { room: finalRoom });
     showToast(`👋 Welcome, ${trimmed}!`);
   };
 
@@ -130,6 +140,7 @@ function App() {
   const handleLogout = () => {
     localStorage.removeItem("username");
     localStorage.removeItem("avatarSeed");
+    localStorage.removeItem("roomId");
     window.location.reload();
   };
 
@@ -162,6 +173,18 @@ function App() {
     showToast("✅ Name updated!");
   };
 
+  // 🏠 Switch Room
+  const handleSwitchRoom = () => {
+    const room = roomInput.trim();
+    if (!room || room === currentRoom) return;
+
+    setCurrentRoom(room);
+    localStorage.setItem("roomId", room);
+    socket.emit("join_room", { room });
+    setRoomInput("");
+    showToast(`🚀 Joined room: ${room}`);
+  };
+
   // 💬 Handle Send Message
   const sendMessage = (e) => {
     e.preventDefault();
@@ -173,6 +196,7 @@ function App() {
       text: text,
       timestamp: Date.now() / 1000,
       avatarSeed: user.avatarSeed,
+      room: currentRoom,
     };
 
     socket.emit("send_message", msgData);
@@ -229,7 +253,7 @@ function App() {
       <div className={`chat-panel ${activePanel === "chat" ? "open" : "closed"}`}>
         <div className="chat-header">
           <div className="online-dot"></div>
-          <span>ORBIT CHAT - ROOM: GLOBAL</span>
+          <span>ORBIT CHAT - ROOM: {currentRoom.toUpperCase()}</span>
         </div>
 
         <div className="room-controls">
@@ -237,8 +261,11 @@ function App() {
             type="text" 
             className="room-input" 
             placeholder="Join or Create Room..." 
+            value={roomInput}
+            onChange={(e) => setRoomInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSwitchRoom()}
           />
-          <button className="join-btn">JOIN</button>
+          <button className="join-btn" onClick={handleSwitchRoom}>JOIN</button>
         </div>
         
         <div className="chat-messages">

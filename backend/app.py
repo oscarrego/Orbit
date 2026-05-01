@@ -1,6 +1,6 @@
 from flask import Flask, request
 from flask_cors import CORS
-from flask_socketio import SocketIO, emit
+from flask_socketio import SocketIO, emit, join_room, leave_room
 import time
 
 app = Flask(__name__)
@@ -11,6 +11,7 @@ socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
 # In-memory store
 users = {} # user_id -> user data
 socket_to_user = {} # sid -> user_id
+socket_to_room = {} # sid -> current room
 
 # ---------------------------
 # CONNECT
@@ -22,12 +23,33 @@ def connect():
     emit("load_messages", [])
 
 # ---------------------------
+# JOIN ROOM
+# ---------------------------
+@socketio.on("join_room")
+def handle_join(data):
+    room = data.get("room", "Global")
+    sid = request.sid
+    
+    # Leave previous room if any
+    old_room = socket_to_room.get(sid)
+    if old_room:
+        leave_room(old_room)
+    
+    join_room(room)
+    socket_to_room[sid] = room
+    print(f"Client {sid} joined room: {room}")
+    
+    # Optional: Clear messages on room switch for client
+    emit("load_messages", [])
+
+# ---------------------------
 # DISCONNECT
 # ---------------------------
 @socketio.on("disconnect")
 def disconnect():
     sid = request.sid
     user_id = socket_to_user.get(sid)
+    socket_to_room.pop(sid, None)
 
     if user_id:
         users.pop(user_id, None)
@@ -73,11 +95,12 @@ def handle_location(data):
 def handle_message(data):
     user = data.get("user")
     text = data.get("text", "").strip()
+    room = data.get("room", "Global")
     
     if not user or not text:
         return
 
-    emit("receive_message", data, broadcast=True)
+    emit("receive_message", data, to=room)
 
 # ---------------------------
 # SOS ALERT
