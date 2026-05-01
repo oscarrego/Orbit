@@ -229,7 +229,16 @@ function App() {
       <div className={`chat-panel ${activePanel === "chat" ? "open" : "closed"}`}>
         <div className="chat-header">
           <div className="online-dot"></div>
-          <span>Global Chat</span>
+          <span>ORBIT CHAT - ROOM: GLOBAL</span>
+        </div>
+
+        <div className="room-controls">
+          <input 
+            type="text" 
+            className="room-input" 
+            placeholder="Join or Create Room..." 
+          />
+          <button className="join-btn">JOIN</button>
         </div>
         
         <div className="chat-messages">
