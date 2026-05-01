@@ -151,24 +151,33 @@ input, button, textarea, select {
   top: 30px;
   left: 50%;
   transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
 
-  background: rgba(15, 23, 42, 0.95);
+  padding: 14px 22px;
+  border-radius: 14px;
+
+  font-size: 14px;
+  font-weight: 600;
   color: white;
 
-  padding: 14px 24px;
-  border-radius: 12px;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 10px 25px rgba(0,0,0,0.3);
 
-  font-size: 15px;
-  font-weight: 600;
-
+  animation: toastIn 0.3s ease;
   z-index: 10000;
-
-  box-shadow: 0 8px 20px rgba(0,0,0,0.4);
-
-  animation: slideDown 0.3s ease;
 }
 
-@keyframes slideDown {
+.toast.sos {
+  background: linear-gradient(135deg, #ef4444, #b91c1c);
+}
+
+.toast.cancel {
+  background: linear-gradient(135deg, #22c55e, #15803d);
+}
+
+@keyframes toastIn {
   from {
     opacity: 0;
     transform: translate(-50%, -20px);

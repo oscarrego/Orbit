@@ -217,7 +217,7 @@ function App() {
     if (isSOSActive) {
       setSosAlerts(prev => prev.filter(alert => alert.id !== user.userId));
       setIsSOSActive(false);
-      showToast("✅ SOS Cancelled");
+      showToast("SOS cancelled", "cancel");
     } else {
       const data = {
         id: user.userId,
@@ -228,12 +228,12 @@ function App() {
 
       socket.emit("sos_alert", data);
       setIsSOSActive(true);
-      showToast("🚨 SOS Sent!");
+      showToast(`${user.username} needs help`, "sos");
     }
   };
 
-  const showToast = (message) => {
-    setToast(message);
+  const showToast = (message, type = "default") => {
+    setToast({ message, type });
     setTimeout(() => {
       setToast(null);
     }, 3000);
@@ -477,7 +477,22 @@ function App() {
         <span>{isSOSActive ? "CANCEL" : "SOS"}</span>
       </button>
 
-      {toast && <div className="toast">{toast}</div>}
+      {toast && (
+        <div className={`toast ${toast.type}`}>
+          {toast.type === "sos" ? (
+            <svg viewBox="0 0 24 24" width="18" height="18">
+              <circle cx="12" cy="12" r="10" stroke="white" strokeWidth="2" fill="none"/>
+              <line x1="12" y1="7" x2="12" y2="13" stroke="white" strokeWidth="2"/>
+              <circle cx="12" cy="17" r="1.5" fill="white"/>
+            </svg>
+          ) : toast.type === "cancel" ? (
+            <svg viewBox="0 0 24 24" width="18" height="18">
+              <path d="M20 6L9 17l-5-5" stroke="white" strokeWidth="2" fill="none"/>
+            </svg>
+          ) : null}
+          <span>{toast.message}</span>
+        </div>
+      )}
 
       {showProfile && (
         <ProfileModal 
