@@ -27,7 +27,9 @@ const getPersistentUser = () => {
 function App() {
   const [users, setUsers] = useState([]);
   const [toast, setToast] = useState(null);
+  const [sosAlerts, setSosAlerts] = useState([]);
   const [userLocation, setUserLocation] = useState(null);
+    
   const [theme, setTheme] = useState(localStorage.getItem("theme") || "dark");
   const [isFollowing, setIsFollowing] = useState(true);
   const [activePanel, setActivePanel] = useState(null); // 'chat', 'users', or null
@@ -72,10 +74,15 @@ function App() {
       setChatMessages((prev) => [...prev, msg]);
     });
 
+    socket.on("sos_alert", (data) => {
+  setSosAlerts(prev => [...prev, data]);
+    });
+
     return () => {
       socket.off("update_users");
       socket.off("load_messages");
       socket.off("receive_message");
+      socket.off("sos_alert");
     };
   }, [user.username, currentRoom]);
 
@@ -247,6 +254,7 @@ function App() {
         setIsFollowing={setIsFollowing}
         onAutoDisableFollowing={handleAutoDisableFollowing}
         currentUserId={user.userId}
+        sosAlerts={sosAlerts}
       />
 
       {/* 💬 CHAT PANEL (Mica Dark) */}

@@ -51,10 +51,11 @@ const getDecorations = (id) => {
   return decorationCache.get(id);
 };
 
-const MapView = forwardRef(({ users, userLocation, theme, isFollowing, setIsFollowing, onAutoDisableFollowing, currentUserId }, ref) => {
+const MapView = forwardRef(({ users, userLocation, theme, isFollowing, setIsFollowing, onAutoDisableFollowing, currentUserId, sosAlerts }, ref) => {
   const mapContainer = useRef(null);
   const map = useRef(null);
   const markers = useRef({});
+  const sosMarkers = useRef({});
   const userMarker = useRef(null);
   const initialCenterSet = useRef(false);
 
@@ -252,6 +253,66 @@ const MapView = forwardRef(({ users, userLocation, theme, isFollowing, setIsFoll
       }
     });
   }, [users, theme, currentUserId]);
+
+  // 🚨 Handle SOS Alerts
+  useEffect(() => {
+  if (!map.current) return;
+
+  const mapInstance = map.current;
+
+  const addSosLayer = () => {
+    const sourceId = "sos-source";
+    const layerId = "sos-layer";
+
+    const geojson = {
+      type: "FeatureCollection",
+      features: sosAlerts.map(alert => ({
+        type: "Feature",
+        geometry: {
+          type: "Point",
+          coordinates: [alert.lng, alert.lat]
+        }
+      }))
+    };
+
+    if (!mapInstance.getSource(sourceId)) {
+      mapInstance.addSource(sourceId, {
+        type: "geojson",
+        data: geojson
+      });
+
+      mapInstance.addLayer({
+        id: layerId,
+        type: "circle",
+        source: sourceId,
+        paint: {
+          "circle-radius": [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            10, 10,
+            14, 30,
+            18, 80
+          ],
+          "circle-color": "rgba(255, 0, 0, 0.25)",
+          "circle-stroke-color": "rgba(254, 73, 73, 0.41)",
+          "circle-stroke-width": 3
+        }
+      });
+
+    } else {
+      mapInstance.getSource(sourceId).setData(geojson);
+    }
+  };
+
+  // ✅ THIS FIXES YOUR ERROR
+  if (mapInstance.isStyleLoaded()) {
+    addSosLayer();
+  } else {
+    mapInstance.once("load", addSosLayer);
+  }
+
+}, [sosAlerts]);
 
   return (
     <div 
