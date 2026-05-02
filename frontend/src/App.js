@@ -96,7 +96,8 @@ function App() {
 
     // 💬 RECEIVE NEW MESSAGE
     socket.on("receive_message", (msg) => {
-      console.log("📨 Message received:", msg);
+      console.log("🔥 RECEIVED:", msg);
+      alert("Message received"); // TEMP
       setChatMessages((prev) => [...prev, msg]);
     });
 
@@ -109,7 +110,7 @@ function App() {
       socket.off("load_messages");
       socket.off("receive_message");
     };
-  }, [user.username, user.userId, currentRoom]);
+  }, [user.username]);
 
   // 📜 Auto-scroll chat
   useEffect(() => {
@@ -208,6 +209,7 @@ function App() {
   const handleSwitchRoom = () => {
     const room = roomInput.trim();
     if (!room || room === currentRoom) return;
+    setChatMessages([]); // 🔥 ADD THIS LINE
 
     setCurrentRoom(room);
     localStorage.setItem("roomId", room);
@@ -231,7 +233,7 @@ function App() {
     };
 
     socket.emit("send_message", msgData);
-    setMsgInput("");
+    setChatMessages((prev) => [...prev, msgData]);
   };
 
   const handleSOS = () => {
