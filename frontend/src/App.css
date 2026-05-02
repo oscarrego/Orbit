@@ -950,7 +950,7 @@ body.light-mode::before {
     align-items: center;
     position: fixed;
     right: 16px;
-    bottom: 110px;
+    bottom: calc(16px + env(safe-area-inset-bottom));
     z-index: 1000;
   }
 
@@ -959,11 +959,15 @@ body.light-mode::before {
     flex-direction: column;
     align-items: center;
     gap: 12px;
-    margin-bottom: 12px;
+    margin-bottom: 10px;
     opacity: 0;
     transform: translateY(10px);
     pointer-events: none;
     transition: all 0.25s ease;
+  }
+
+  .sos-btn {
+    bottom: calc(16px + env(safe-area-inset-bottom));
   }
 
   .fab-container.open .fab-actions {
@@ -1057,4 +1061,18 @@ body.light-mode::before {
     padding: 24px;
     max-width: 320px;
   }
+
+  /* Popup / Toast Fixes */
+  .toast {
+    top: calc(75px + env(safe-area-inset-top));
+    left: 50%;
+    transform: translateX(-50%);
+  }
+}
+
+
+.maplibregl-ctrl-attrib {
+  font-size: 1px;
+  opacity: 0.0;
+  padding: 2px 6px;
 }

@@ -1,4 +1,4 @@
-import { useEffect, useRef, forwardRef, useImperativeHandle } from "react";
+import { useEffect, useRef, forwardRef, useImperativeHandle, useState } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 
@@ -58,6 +58,7 @@ const MapView = forwardRef(({ users, userLocation, theme, isFollowing, setIsFoll
   const sosMarkers = useRef({});
   const userMarker = useRef(null);
   const initialCenterSet = useRef(false);
+  const [is3DView, setIs3DView] = useState(false);
 
   const styles = {
     dark: "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
@@ -76,7 +77,7 @@ const MapView = forwardRef(({ users, userLocation, theme, isFollowing, setIsFoll
       bearing: -20,
     });
 
-    map.current.addControl(new maplibregl.NavigationControl(), "bottom-right");
+    
 
     // 🏗️ RELIABLE LAYER RESTORATION
     // 'styledata' fires when style changes, ensuring 3D layers are always re-added
@@ -110,12 +111,38 @@ const MapView = forwardRef(({ users, userLocation, theme, isFollowing, setIsFoll
     handleRecenter: () => {
       if (map.current && userLocation) {
         const { lngOffset, latOffset } = getDecorations(currentUserId);
-        map.current.easeTo({
-          center: [userLocation.lng + lngOffset, userLocation.lat + latOffset],
-          zoom: 17,
-          duration: 1000,
-          essential: true,
-        });
+
+
+
+        if (is3DView) {
+  // TOP VIEW
+      map.current.easeTo({
+        center: [userLocation.lng + lngOffset, userLocation.lat + latOffset],
+        zoom: 16,
+        pitch: 0,
+        bearing: 0,
+        duration: 800,
+        essential: true,
+      });
+    } else {
+      // 3D VIEW
+      map.current.easeTo({
+        center: [userLocation.lng + lngOffset, userLocation.lat + latOffset],
+        zoom: 16,
+        pitch: 60,
+        bearing: userLocation.heading || 0,
+        duration: 800,
+        essential: true,
+      });
+    }
+
+    setIs3DView(prev => !prev);
+
+
+
+
+
+
       }
     },
     handleCenterOnUser: (lng, lat) => {
@@ -192,7 +219,7 @@ const MapView = forwardRef(({ users, userLocation, theme, isFollowing, setIsFoll
         essential: true,
       });
     }
-  }, [userLocation, theme, isFollowing, currentUserId]);
+  }, [userLocation, theme, isFollowing, currentUserId, is3DView]);
 
   const add3D = () => {
     if (!map.current || map.current.getLayer("3d-buildings")) return;
@@ -312,5 +339,4 @@ const MapView = forwardRef(({ users, userLocation, theme, isFollowing, setIsFoll
       />
     );
   });
-
   export default MapView;
