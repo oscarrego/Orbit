@@ -135,15 +135,14 @@ def handle_message(data):
         "timestamp": time.time()
     }
 
-    messages_collection.insert_one(message)
-    print("💾 SAVED TO MONGO")
+    result = messages_collection.insert_one(message)
 
-    # Fix: Convert ObjectId to string to prevent JSON serialization error during socketio emit
-    message["_id"] = str(message["_id"])
+    message_to_send = {
+        **message,
+        "_id": str(result.inserted_id)
+    }
 
-    print("🚀 EMITTING TO ROOM:", room)
-
-    socketio.emit("receive_message", message, room=room, include_self=False)
+    socketio.emit("receive_message", message_to_send, room=room, include_self=False)
 # ---------------------------
 # SOS ALERT
 # ---------------------------
