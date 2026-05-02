@@ -262,6 +262,7 @@ const MapView = forwardRef(({ users, userLocation, theme, isFollowing, setIsFoll
 
     // Create/Update SOS Markers
     sosAlerts.forEach((alert) => {
+      const { lngOffset, latOffset } = getDecorations(alert.id);
       if (!sosMarkers.current[alert.id]) {
         console.log("✨ Creating new SOS marker for:", alert.id);
         const el = document.createElement("div");
@@ -269,19 +270,26 @@ const MapView = forwardRef(({ users, userLocation, theme, isFollowing, setIsFoll
         el.innerHTML = `
           <div class="sos-pulse"></div>
           <div class="sos-pulse delay"></div>
-          <div class="sos-center"></div>
+          
         `;
 
         const marker = new maplibregl.Marker({ 
           element: el, 
           anchor: "center" 
         })
-          .setLngLat([alert.lng, alert.lat]) // NO OFFSET for SOS
-          .addTo(map.current);
+        
+        .setLngLat([
+          alert.lng + lngOffset,
+          alert.lat + latOffset
+        ])
+        .addTo(map.current);
 
         sosMarkers.current[alert.id] = marker;
       } else {
-        sosMarkers.current[alert.id].setLngLat([alert.lng, alert.lat]);
+        sosMarkers.current[alert.id].setLngLat([
+          alert.lng + lngOffset,
+          alert.lat + latOffset
+        ]);
       }
     });
 
@@ -294,7 +302,7 @@ const MapView = forwardRef(({ users, userLocation, theme, isFollowing, setIsFoll
         delete sosMarkers.current[id];
       }
     });
-  }, [JSON.stringify(sosAlerts)]);
+  }, [sosAlerts]);
 
     return (
       <div 
