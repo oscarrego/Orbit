@@ -1,20 +1,18 @@
 import { io } from "socket.io-client";
 
 const socket = io("https://orbit-g4ah.onrender.com", {
-  transports: ["websocket"],
+  transports: ["polling", "websocket"], // 🔥 VERY IMPORTANT
   reconnection: true,
-  reconnectionAttempts: Infinity,
-  timeout: 10000,
+  reconnectionAttempts: 10,
+  reconnectionDelay: 1000,
 });
 
 socket.on("connect", () => {
-  console.log("✅ Connected:", socket.id);
+  console.log("✅ CONNECTED:", socket.id);
 });
 
 socket.on("connect_error", (err) => {
-  console.log("❌ Connection error:", err.message);
+  console.log("❌ CONNECTION ERROR:", err.message);
 });
-
-
 
 export default socket;
