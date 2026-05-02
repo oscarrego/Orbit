@@ -3,6 +3,14 @@ from flask_cors import CORS
 from flask_socketio import SocketIO, emit, join_room, leave_room
 import time
 
+from pymongo import MongoClient
+
+MONGO_URI = "mongodb+srv://oscarrego789_db_user:zWrKr0pL5ienJ9Hk@cluster0.mfwkaqq.mongodb.net/?appName=Cluster0"
+
+client = MongoClient(MONGO_URI)
+db = client["orbit"]
+messages_collection = db["messages"]
+
 app = Flask(__name__)
 CORS(app)
 
@@ -20,7 +28,6 @@ socket_to_room = {} # sid -> current room
 def connect():
     print(f"Client connected: {request.sid}")
     # Removed database loading - chat starts empty
-    emit("load_messages", [])
 
 # ---------------------------
 # JOIN ROOM
@@ -29,19 +36,26 @@ def connect():
 def handle_join(data):
     room = data.get("room", "Global")
     sid = request.sid
-    
-    # Leave previous room if any
+
+    # Leave old room
     old_room = socket_to_room.get(sid)
     if old_room:
         leave_room(old_room)
-    
+
     join_room(room)
     socket_to_room[sid] = room
-    print(f"Client {sid} joined room: {room}")
-    
-    # Optional: Clear messages on room switch for client
-    emit("load_messages", [])
 
+    print(f"Client {sid} joined room: {room}")
+
+    # 🔥 LOAD OLD MESSAGES FROM MONGO
+    messages = list(
+        messages_collection.find({"room": room}).sort("timestamp", 1)
+    )
+
+    for msg in messages:
+        msg["_id"] = str(msg["_id"])
+
+    emit("load_messages", messages)
 # ---------------------------
 # DISCONNECT
 # ---------------------------
@@ -96,12 +110,22 @@ def handle_message(data):
     user = data.get("user")
     text = data.get("text", "").strip()
     room = data.get("room", "Global")
-    
+
     if not user or not text:
         return
 
-    emit("receive_message", data, to=room)
+    message = {
+        "user": user,
+        "text": text,
+        "room": room,
+        "timestamp": time.time()
+    }
 
+    # 🔥 SAVE TO MONGO
+    messages_collection.insert_one(message)
+
+    # 🔥 SEND TO ROOM
+    socketio.emit("receive_message", message, to=room)
 # ---------------------------
 # SOS ALERT
 # ---------------------------
