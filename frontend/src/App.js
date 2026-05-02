@@ -388,7 +388,15 @@ function App() {
       {/* ⬅️ CHAT TOGGLE BUTTON */}
       <button 
         className={`chat-toggle ${activePanel === "chat" ? "open" : "closed"}`}
-        onClick={() => setActivePanel(prev => (prev === "chat" ? null : "chat"))}
+        onClick={() => {
+          setActivePanel(prev => {
+            const next = prev === "chat" ? null : "chat";
+            if (next === "chat" && window.innerWidth <= 768) {
+              setFabOpen(false);
+            }
+            return next;
+          });
+        }}
         title={activePanel === "chat" ? "Collapse Chat" : "Expand Chat"}
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -527,7 +535,15 @@ function App() {
           </button>
         </div>
 
-        <button className="fab-main" onClick={() => setFabOpen(prev => !prev)}>
+        <button className="fab-main" onClick={() => {
+          setFabOpen(prev => {
+            const next = !prev;
+            if (next && window.innerWidth <= 768) {
+              setActivePanel(current => current === "chat" ? null : current);
+            }
+            return next;
+          });
+        }}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 24, height: 24 }}>
             <circle cx="12" cy="12" r="1"></circle>
             <circle cx="12" cy="5" r="1"></circle>

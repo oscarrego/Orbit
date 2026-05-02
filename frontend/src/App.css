@@ -939,7 +939,7 @@ body.light-mode::before {
   }
 
   /* Control Cluster - Hidden on Mobile */
-  .control-cluster {
+  .control-cluster .control-btn {
     display: none;
   }
 
@@ -1001,6 +1001,7 @@ body.light-mode::before {
     top: 20px;
     left: auto;
     right: 20px;
+    display: flex;
     z-index: 10001; /* Ensure it stays on top */
   }
 
