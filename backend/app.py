@@ -107,7 +107,7 @@ def handle_location(data):
 # ---------------------------
 @socketio.on("send_message")
 def handle_message(data):
-    print("📨 MESSAGE RECEIVED:", data)  # ✅ DEBUG 1
+    print("📨 MESSAGE RECEIVED:", data)
 
     user = data.get("user")
     text = data.get("text", "").strip()
@@ -125,11 +125,11 @@ def handle_message(data):
     }
 
     messages_collection.insert_one(message)
-    print("💾 SAVED TO MONGO")  # ✅ DEBUG 2
+    print("💾 SAVED TO MONGO")
 
-    print("🚀 EMITTING TO ROOM:", room)  # ✅ DEBUG 3
+    print("🚀 EMITTING TO ROOM:", room)
 
-    emit("receive_message", message, to=room, broadcast=True)
+    emit("receive_message", message, room=room)
 # ---------------------------
 # SOS ALERT
 # ---------------------------
