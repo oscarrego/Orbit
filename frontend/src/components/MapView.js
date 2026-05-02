@@ -254,65 +254,51 @@ const MapView = forwardRef(({ users, userLocation, theme, isFollowing, setIsFoll
     });
   }, [users, theme, currentUserId]);
 
-  // 🚨 Handle SOS Alerts
+  // 🚨 Handle SOS Alerts (Enhanced with Markers)
   useEffect(() => {
-  if (!map.current) return;
+    if (!map.current) return;
 
-  const mapInstance = map.current;
+    // Create/Update SOS Markers
+    sosAlerts.forEach((alert) => {
+      const { lngOffset, latOffset } = getDecorations(alert.id);
 
-  const addSosLayer = () => {
-    const sourceId = "sos-source";
-    const layerId = "sos-layer";
+      if (!sosMarkers.current[alert.id]) {
+        const el = document.createElement("div");
+        el.className = "sos-marker";
 
-    const geojson = {
-      type: "FeatureCollection",
-      features: sosAlerts.map(alert => ({
-        type: "Feature",
-        geometry: {
-          type: "Point",
-          coordinates: [alert.lng, alert.lat]
-        }
-      }))
-    };
+        el.innerHTML = `
+          <div class="sos-pulse"></div>
+          <div class="sos-pulse delay"></div>
+        `;
 
-    if (!mapInstance.getSource(sourceId)) {
-      mapInstance.addSource(sourceId, {
-        type: "geojson",
-        data: geojson
-      });
+        const marker = new maplibregl.Marker({
+          element: el,
+          anchor: "center",
+        })
+          .setLngLat([
+            alert.lng + lngOffset,
+            alert.lat + latOffset
+          ])
+          .addTo(map.current);
 
-      mapInstance.addLayer({
-        id: layerId,
-        type: "circle",
-        source: sourceId,
-        paint: {
-          "circle-radius": [
-            "interpolate",
-            ["linear"],
-            ["zoom"],
-            10, 10,
-            14, 30,
-            18, 80
-          ],
-          "circle-color": "rgb(252, 147, 147)",
-          "circle-stroke-color": "rgba(251, 62, 62, 0.87)",
-          "circle-stroke-width": 1
-        }
-      });
+        sosMarkers.current[alert.id] = marker;
 
-    } else {
-      mapInstance.getSource(sourceId).setData(geojson);
-    }
-  };
+      } else {
+        sosMarkers.current[alert.id].setLngLat([
+          alert.lng + lngOffset,
+          alert.lat + latOffset
+        ]);
+      }
+    });
 
-  // ✅ THIS FIXES YOUR ERROR
-  if (mapInstance.isStyleLoaded()) {
-    addSosLayer();
-  } else {
-    mapInstance.once("load", addSosLayer);
-  }
-
-}, [sosAlerts]);
+    // Remove inactive SOS markers
+    Object.keys(sosMarkers.current).forEach((id) => {
+      if (!sosAlerts.find((alert) => alert.id === id)) {
+        sosMarkers.current[id].remove();
+        delete sosMarkers.current[id];
+      }
+    });
+  }, [sosAlerts]);
 
   return (
     <div 
