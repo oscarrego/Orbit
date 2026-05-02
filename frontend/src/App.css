@@ -77,6 +77,11 @@
   gap: 12px;
 }
 
+/* 📱 Mobile FAB Container (Hidden by Default) */
+.fab-container {
+  display: none;
+}
+
 .control-btn {
   width: 44px;
   height: 44px;
@@ -933,14 +938,61 @@ body.light-mode::before {
     height: 34px;
   }
 
-  /* Control Cluster - Bottom Right Stack */
+  /* Control Cluster - Hidden on Mobile */
   .control-cluster {
-    top: auto;
-    bottom: 90px;
-    left: auto;
-    right: 16px;
+    display: none;
+  }
+
+  /* 📱 Mobile FAB */
+  .fab-container {
+    display: flex;
     flex-direction: column;
+    align-items: center;
+    position: fixed;
+    right: 16px;
+    bottom: 110px;
+    z-index: 1000;
+  }
+
+  .fab-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     gap: 12px;
+    margin-bottom: 12px;
+    opacity: 0;
+    transform: translateY(10px);
+    pointer-events: none;
+    transition: all 0.25s ease;
+  }
+
+  .fab-container.open .fab-actions {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+  }
+
+  .fab-main {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: rgba(25, 25, 25, 0.7);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  .fab-main:hover, .fab-container.open .fab-main {
+    background: rgba(45, 45, 45, 0.8);
+    border-color: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6), 0 0 20px rgba(255, 255, 255, 0.1);
   }
 
   /* Extract Profile Button from cluster flow (if it is inside) and move to top-right */
