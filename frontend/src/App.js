@@ -88,12 +88,26 @@ function App() {
       setSosAlerts(prev => prev.filter(alert => String(alert.id) !== String(data.id)));
     });
 
+    // 💬 LOAD OLD MESSAGES
+    socket.on("load_messages", (messages) => {
+      console.log("📜 LOADED MESSAGES:", messages);
+      setChatMessages(messages);
+    });
+
+    // 💬 RECEIVE NEW MESSAGE
+    socket.on("receive_message", (msg) => {
+      console.log("📨 Message received:", msg);
+      setChatMessages((prev) => [...prev, msg]);
+    });
+
     return () => {
       socket.off("update_users");
       socket.off("load_messages");
       socket.off("receive_message");
       socket.off("sos_alert");
       socket.off("sos_cancel");
+      socket.off("load_messages");
+      socket.off("receive_message");
     };
   }, [user.username, user.userId, currentRoom]);
 
