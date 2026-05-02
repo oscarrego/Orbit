@@ -865,23 +865,72 @@ body.light-mode::before {
     overflow-x: hidden;
   }
 
-  /* Chat Panel - Full Screen Slide-in */
+  /* Chat Panel - Compact Floating Sidebar */
   .chat-panel {
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    width: 100%;
-    height: 100%;
-    max-height: none;
-    border-radius: 0;
-    border: none;
+    top: 80px;
+    left: 16px;
+    right: auto;
+    bottom: auto;
+    width: 78%;
+    max-width: 280px;
+    height: 55vh;
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.04);
     z-index: 10000;
     transform: translateX(0); /* Open state */
+    overflow: hidden;
   }
 
   .chat-panel.closed {
-    transform: translateX(-100%);
+    transform: translateX(calc(-100% - 32px));
+  }
+
+  .chat-messages {
+    flex: 1;
+    overflow-y: auto;
+  }
+
+  /* Fix Input Area (Send Button Issue) */
+  .chat-input-container {
+    display: flex;
+    align-items: center;
+  }
+
+  .message-input-wrapper {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    gap: 8px;
+  }
+
+  .chat-panel input {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .send-btn {
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+  }
+
+  /* Fix Join Button (Clipping Issue) */
+  .room-controls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .room-input {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .join-btn {
+    flex-shrink: 0;
+    padding: 0 12px;
+    height: 34px;
   }
 
   /* Control Cluster - Bottom Right Stack */
@@ -926,29 +975,27 @@ body.light-mode::before {
     max-width: 280px;
   }
 
-  /* Chat Toggle Button - Thumb Reachable */
+  /* Chat Toggle Button - Compact Sidebar */
   .chat-toggle {
-    /* Position when chat is OPEN (floats above messages, avoids input) */
-    top: auto;
-    bottom: 95px;
-    left: auto;
-    right: 20px;
-    width: 46px;
-    height: 46px;
-    border-radius: 50%;
-    transform: none;
-    z-index: 10001; /* Above full-screen chat */
+    top: 50%;
+    left: min(calc(78% + 20px), 310px);
+    bottom: auto;
+    right: auto;
+    width: 36px;
+    height: 60px;
+    border-radius: 12px;
+    transform: translateY(-50%);
+    z-index: 10001;
   }
 
   .chat-toggle.closed {
-    /* Position when chat is CLOSED */
-    left: auto;
-    right: 20px;
-    bottom: 20px;
+    left: 10px;
+    right: auto;
+    bottom: auto;
   }
 
   .chat-toggle:hover {
-    transform: scale(1.05);
+    transform: translateY(-50%) scale(1.05);
   }
 
   /* Profile Modal - Responsive Width */
