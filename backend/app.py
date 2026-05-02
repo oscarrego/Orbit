@@ -8,7 +8,7 @@ import time
 
 from pymongo import MongoClient
 
-MONGO_URI = "mongodb+srv://oscarrego789_db_user:zWrKr0pL5ienJ9Hk@cluster0.mfwkaqq.mongodb.net/?appName=Cluster0"
+MONGO_URI = os.environ.get("MONGO_URI")
 
 client = MongoClient(MONGO_URI)
 db = client["orbit"]
