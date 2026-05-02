@@ -181,8 +181,8 @@
   left: 20px;
   top: 80px;
   width: 320px;
-  height: 65vh;
-  max-height: 500px;
+  height: 80vh;
+  max-height: 700px;
   z-index: 9998;
   border-radius: 20px;
   overflow: hidden;
@@ -878,7 +878,7 @@ body.light-mode::before {
     bottom: auto;
     width: 78%;
     max-width: 280px;
-    height: 55vh;
+    height: 65vh;
     border-radius: 20px;
     border: 1px solid rgba(255, 255, 255, 0.06);
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.04);
