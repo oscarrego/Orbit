@@ -75,8 +75,18 @@ function App() {
       setChatMessages((prev) => [...prev, msg]);
     });
 
-    socket.on("sos_alert", (data) => {
-  setSosAlerts(prev => [...prev, data]);
+  socket.on("sos_alert", (data) => {
+      setSosAlerts(prev => [...prev, data]);
+      // Show clickable toast for other users' SOS
+      if (data.id !== user.userId) {
+        showToast({
+          message: `${data.name} needs help!`,
+          type: "sos",
+          userId: data.id,
+          lat: data.lat,
+          lng: data.lng
+        });
+      }
     });
 
     return () => {
@@ -85,7 +95,7 @@ function App() {
       socket.off("receive_message");
       socket.off("sos_alert");
     };
-  }, [user.username, currentRoom]);
+  }, [user.username, user.userId, currentRoom]);
 
   // 📜 Auto-scroll chat
   useEffect(() => {
@@ -227,15 +237,27 @@ function App() {
 
       socket.emit("sos_alert", data);
       setIsSOSActive(true);
-      showToast(`${user.username} needs help`, "sos");
+      showToast({
+        message: `${user.username} needs help`,
+        type: "sos",
+        userId: user.userId,
+        lat: userLocation.lat,
+        lng: userLocation.lng
+      });
     }
   };
 
-  const showToast = (message, type = "default") => {
-    setToast({ message, type });
+  const showToast = (input, type = "default") => {
+    if (typeof input === "object") {
+      setToast(input);
+    } else {
+      setToast({ message: input, type });
+    }
+    
+    // Auto-clear toast
     setTimeout(() => {
       setToast(null);
-    }, 3000);
+    }, 5000);
   };
 
   // 🛸 If no username, show Login Page
@@ -512,7 +534,19 @@ function App() {
       </button>
 
       {toast && (
-        <div className={`toast ${toast.type}`}>
+        <div 
+          className={`toast ${toast.type}`}
+          onClick={() => {
+            if (toast.type === "sos" && toast.userId !== user.userId) {
+              mapRef.current?.handleCenterOnUser(toast.lng, toast.lat);
+              setIsFollowing(false);
+              showToast({ message: "Tracking user...", type: "tracking" });
+            }
+          }}
+          style={{ 
+            cursor: toast.type === "sos" && toast.userId !== user.userId ? "pointer" : "default" 
+          }}
+        >
           {/* ICON */}
           {toast.type === "tracking" && (
             <svg className="icon radar-sweep" viewBox="0 0 24 24" fill="none">
@@ -544,6 +578,20 @@ function App() {
           )}
 
           <span className="text">{toast.message}</span>
+
+          {toast.type === "sos" && toast.userId !== user.userId && (
+            <button 
+              className="view-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                mapRef.current?.handleCenterOnUser(toast.lng, toast.lat);
+                setIsFollowing(false);
+                showToast({ message: "Tracking user...", type: "tracking" });
+              }}
+            >
+              VIEW
+            </button>
+          )}
         </div>
       )}
 
