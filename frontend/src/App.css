@@ -176,7 +176,8 @@
   left: 20px;
   top: 80px;
   width: 320px;
-  height: calc(100% - 120px);
+  height: 65vh;
+  max-height: 500px;
   z-index: 9998;
   border-radius: 20px;
   overflow: hidden;
@@ -841,6 +842,119 @@ body.light-mode::before {
   background: rgba(255, 255, 255, 0.1);
 }
 
+/* =========================================
+   📱 RESPONSIVE DESIGN BREAKPOINTS
+   ========================================= */
 
+/* 💻 Tablet (max-width: 1024px) */
+@media (max-width: 1024px) {
+  .chat-panel {
+    width: 280px;
+    height: 60vh;
+  }
+  
+  .chat-toggle {
+    left: 300px;
+  }
+}
 
+/* 📱 Mobile (max-width: 768px) */
+@media (max-width: 768px) {
+  /* Prevent horizontal scrolling & body overflow issues */
+  html, body {
+    overflow-x: hidden;
+  }
 
+  /* Chat Panel - Full Screen Slide-in */
+  .chat-panel {
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    height: 100%;
+    max-height: none;
+    border-radius: 0;
+    border: none;
+    z-index: 10000;
+    transform: translateX(0); /* Open state */
+  }
+
+  .chat-panel.closed {
+    transform: translateX(-100%);
+  }
+
+  /* Control Cluster - Bottom Right Stack */
+  .control-cluster {
+    top: auto;
+    bottom: 90px;
+    left: auto;
+    right: 16px;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  /* Extract Profile Button from cluster flow (if it is inside) and move to top-right */
+  .profile-btn {
+    position: fixed;
+    top: 20px;
+    left: auto;
+    right: 20px;
+    z-index: 10001; /* Ensure it stays on top */
+  }
+
+  /* Improve touch usability (>= 40px) */
+  .control-btn, .profile-btn .avatar {
+    min-width: 40px;
+    min-height: 40px;
+    width: 44px;
+    height: 44px;
+  }
+
+  /* Users Indicator - Compact & Avoid Overlaps */
+  .users-indicator {
+    top: 20px;
+    left: 15px; /* Back to original left position since profile button moved */
+    padding: 8px 14px;
+    font-size: 12px;
+  }
+
+  .users-panel {
+    top: 70px;
+    left: 20px;
+    width: calc(100vw - 40px);
+    max-width: 280px;
+  }
+
+  /* Chat Toggle Button - Thumb Reachable */
+  .chat-toggle {
+    /* Position when chat is OPEN (floats above messages, avoids input) */
+    top: auto;
+    bottom: 95px;
+    left: auto;
+    right: 20px;
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    transform: none;
+    z-index: 10001; /* Above full-screen chat */
+  }
+
+  .chat-toggle.closed {
+    /* Position when chat is CLOSED */
+    left: auto;
+    right: 20px;
+    bottom: 20px;
+  }
+
+  .chat-toggle:hover {
+    transform: scale(1.05);
+  }
+
+  /* Profile Modal - Responsive Width */
+  .profile-modal {
+    width: 85%;
+    padding: 24px;
+    max-width: 320px;
+  }
+}
