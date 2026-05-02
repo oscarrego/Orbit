@@ -17,7 +17,13 @@ messages_collection = db["messages"]
 app = Flask(__name__)
 CORS(app)
 
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet")
+socketio = SocketIO(
+    app,
+    cors_allowed_origins="*",
+    async_mode="eventlet",
+    logger=True,
+    engineio_logger=True
+)
 
 # In-memory store
 users = {} # user_id -> user data
@@ -130,9 +136,12 @@ def handle_message(data):
     messages_collection.insert_one(message)
     print("💾 SAVED TO MONGO")
 
+    # Fix: Convert ObjectId to string to prevent JSON serialization error during socketio emit
+    message["_id"] = str(message["_id"])
+
     print("🚀 EMITTING TO ROOM:", room)
 
-    emit("receive_message", message, room=room)
+    socketio.emit("receive_message", message, room=room, include_self=False)
 # ---------------------------
 # SOS ALERT
 # ---------------------------
