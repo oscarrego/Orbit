@@ -107,11 +107,14 @@ def handle_location(data):
 # ---------------------------
 @socketio.on("send_message")
 def handle_message(data):
+    print("📨 MESSAGE RECEIVED:", data)  # ✅ DEBUG 1
+
     user = data.get("user")
     text = data.get("text", "").strip()
     room = data.get("room", "Global")
 
     if not user or not text:
+        print("❌ INVALID MESSAGE")
         return
 
     message = {
@@ -121,11 +124,12 @@ def handle_message(data):
         "timestamp": time.time()
     }
 
-    # 🔥 SAVE TO MONGO
     messages_collection.insert_one(message)
+    print("💾 SAVED TO MONGO")  # ✅ DEBUG 2
 
-    # 🔥 SEND TO ROOM
-    emit("receive_message", message, to=room)
+    print("🚀 EMITTING TO ROOM:", room)  # ✅ DEBUG 3
+
+    emit("receive_message", message, to=room, broadcast=True)
 # ---------------------------
 # SOS ALERT
 # ---------------------------
