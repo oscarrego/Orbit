@@ -258,55 +258,51 @@ const MapView = forwardRef(({ users, userLocation, theme, isFollowing, setIsFoll
   useEffect(() => {
     if (!map.current) return;
 
+    console.log("📡 SOS ALERTS UPDATE:", sosAlerts);
+
     // Create/Update SOS Markers
     sosAlerts.forEach((alert) => {
-      const { lngOffset, latOffset } = getDecorations(alert.id);
-
       if (!sosMarkers.current[alert.id]) {
+        console.log("✨ Creating new SOS marker for:", alert.id);
         const el = document.createElement("div");
         el.className = "sos-marker";
-
         el.innerHTML = `
           <div class="sos-pulse"></div>
           <div class="sos-pulse delay"></div>
+          <div class="sos-center"></div>
         `;
 
-        const marker = new maplibregl.Marker({
-          element: el,
-          anchor: "center",
+        const marker = new maplibregl.Marker({ 
+          element: el, 
+          anchor: "center" 
         })
-          .setLngLat([
-            alert.lng + lngOffset,
-            alert.lat + latOffset
-          ])
+          .setLngLat([alert.lng, alert.lat]) // NO OFFSET for SOS
           .addTo(map.current);
 
         sosMarkers.current[alert.id] = marker;
-
       } else {
-        sosMarkers.current[alert.id].setLngLat([
-          alert.lng + lngOffset,
-          alert.lat + latOffset
-        ]);
+        sosMarkers.current[alert.id].setLngLat([alert.lng, alert.lat]);
       }
     });
 
     // Remove inactive SOS markers
     Object.keys(sosMarkers.current).forEach((id) => {
-      if (!sosAlerts.find((alert) => alert.id === id)) {
+      const stillExists = sosAlerts.find((alert) => String(alert.id) === String(id));
+      if (!stillExists) {
+        console.log("🗑️ Removing SOS marker for:", id);
         sosMarkers.current[id].remove();
         delete sosMarkers.current[id];
       }
     });
-  }, [sosAlerts]);
+  }, [JSON.stringify(sosAlerts)]);
 
-  return (
-    <div 
-      ref={mapContainer} 
-      className="map-viewport" 
-      style={{ width: "100%", height: "100vh", position: "relative" }} 
-    />
-  );
-});
+    return (
+      <div 
+        ref={mapContainer} 
+        className="map-viewport" 
+        style={{ width: "100%", height: "100vh", position: "relative" }} 
+      />
+    );
+  });
 
-export default MapView;
+  export default MapView;

@@ -334,5 +334,50 @@ input, button, textarea, select {
   }
 }
 
+/* ✈️ FOLLOW ME ANIMATION */
+.follow-fly {
+  transform-origin: center;
+  animation: followDiagonal 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes followDiagonal {
+  0% {
+    transform: translate(0, 8px) scale(1) rotate(0deg);
+    opacity: 1;
+  }
+
+  40% {
+    transform: translate(6px, -4px) scale(1.05) rotate(-6deg);
+    opacity: 1;
+  }
+
+  100% {
+    transform: translate(36px, -32px) scale(0.6) rotate(-18deg);
+    opacity: 0;
+  }
+}
 
 
+
+
+/* 📡 RADAR SWEEP ANIMATION (TRACKING) */
+
+.radar-sweep {
+  transform-origin: center;
+}
+
+.radar-sweep .sweep {
+  transform-origin: center;
+  animation: radarSweep 1.2s linear infinite;
+}
+
+@keyframes radarSweep {
+  from {
+    transform: rotate(0deg);
+    opacity: 0.8;
+  }
+  to {
+    transform: rotate(360deg);
+    opacity: 0.2;
+  }
+}

@@ -67,18 +67,12 @@ function App() {
       setUsers(Object.values(unique));
     });
 
-    socket.on("load_messages", (messages) => {
-      setChatMessages(messages);
-    });
-
-    socket.on("receive_message", (msg) => {
-      setChatMessages((prev) => [...prev, msg]);
-    });
-
-  socket.on("sos_alert", (data) => {
-      setSosAlerts(prev => [...prev, data]);
+    socket.on("sos_alert", (data) => {
+      console.log("🚨 ALERT RECEIVED:", data);
+      setSosAlerts(prev => [...prev.filter(alert => String(alert.id) !== String(data.id)), data]);
+      
       // Show clickable toast for other users' SOS
-      if (data.id !== user.userId) {
+      if (String(data.id) !== String(user.userId)) {
         showToast({
           message: `${data.name} needs help!`,
           type: "sos",
@@ -89,11 +83,17 @@ function App() {
       }
     });
 
+    socket.on("sos_cancel", (data) => {
+      console.log("🔥 CANCEL RECEIVED:", data);
+      setSosAlerts(prev => prev.filter(alert => String(alert.id) !== String(data.id)));
+    });
+
     return () => {
       socket.off("update_users");
       socket.off("load_messages");
       socket.off("receive_message");
       socket.off("sos_alert");
+      socket.off("sos_cancel");
     };
   }, [user.username, user.userId, currentRoom]);
 
@@ -224,7 +224,12 @@ function App() {
     if (!userLocation || !user.username) return;
     
     if (isSOSActive) {
+      // 🔴 TELL SERVER YOU CANCELLED
+      socket.emit("sos_cancel", { id: user.userId });
+
+      // 🔴 REMOVE LOCALLY
       setSosAlerts(prev => prev.filter(alert => alert.id !== user.userId));
+
       setIsSOSActive(false);
       showToast("SOS cancelled", "cancel");
     } else {

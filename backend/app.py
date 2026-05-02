@@ -107,8 +107,13 @@ def handle_message(data):
 # ---------------------------
 @socketio.on("sos_alert")
 def handle_sos(data):
-    print("SOS:", data)
-    emit("sos_alert", data, broadcast=True)
+    print("SOS ALERT:", data)
+    socketio.emit("sos_alert", data) # Global broadcast to all
+    
+@socketio.on("sos_cancel")
+def handle_sos_cancel(data):
+    print("SOS CANCEL:", data)
+    socketio.emit("sos_cancel", data) # Global broadcast to all
 
 # ---------------------------
 # RUN SERVER
