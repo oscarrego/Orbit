@@ -900,24 +900,30 @@ body.light-mode::before {
   .chat-input-container {
     display: flex;
     align-items: center;
+    padding: 6px 10px;
+    height: auto;
+    margin-bottom: 4px;
   }
 
   .message-input-wrapper {
     display: flex;
     align-items: center;
     width: 100%;
-    gap: 8px;
+    gap: 6px;
   }
 
   .chat-panel input {
     flex: 1;
     min-width: 0;
+    height: 36px;
+    padding: 6px 10px;
+    font-size: 14px;
   }
 
   .send-btn {
     flex-shrink: 0;
-    width: 36px;
-    height: 36px;
+    width: 34px;
+    height: 34px;
   }
 
   /* Fix Join Button (Clipping Issue) */
