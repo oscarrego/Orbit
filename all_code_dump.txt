@@ -1,5 +1,59 @@
 
 ================================================================================
+FILE: .\dump_code.py
+================================================================================
+
+import os
+
+# Folder to scan (current directory)
+ROOT_DIR = "."
+
+# Output file
+OUTPUT_FILE = "all_code_dump.txt"
+
+# File extensions to include
+INCLUDE_EXTENSIONS = (
+    ".js", ".jsx", ".ts", ".tsx",
+    ".py", ".html", ".css",
+    ".json", ".md"
+)
+
+# Folders to ignore
+IGNORE_DIRS = {"node_modules", ".git", "build", "dist", "__pycache__"}
+
+def should_include(file):
+    return file.endswith(INCLUDE_EXTENSIONS)
+
+def main():
+    with open(OUTPUT_FILE, "w", encoding="utf-8") as out:
+        for root, dirs, files in os.walk(ROOT_DIR):
+            # Remove ignored directories
+            dirs[:] = [d for d in dirs if d not in IGNORE_DIRS]
+
+            for file in files:
+                if should_include(file):
+                    file_path = os.path.join(root, file)
+
+                    try:
+                        with open(file_path, "r", encoding="utf-8") as f:
+                            content = f.read()
+
+                        out.write(f"\n{'='*80}\n")
+                        out.write(f"FILE: {file_path}\n")
+                        out.write(f"{'='*80}\n\n")
+                        out.write(content)
+                        out.write("\n\n")
+
+                    except Exception as e:
+                        out.write(f"\n[ERROR READING {file_path}: {e}]\n")
+
+    print(f"\n✅ All code dumped into: {OUTPUT_FILE}")
+
+if __name__ == "__main__":
+    main()
+
+
+================================================================================
 FILE: .\backend\app.py
 ================================================================================
 
@@ -112,8 +166,13 @@ def handle_message(data):
 # ---------------------------
 @socketio.on("sos_alert")
 def handle_sos(data):
-    print("SOS:", data)
-    emit("sos_alert", data, broadcast=True)
+    print("SOS ALERT:", data)
+    socketio.emit("sos_alert", data) # Global broadcast to all
+    
+@socketio.on("sos_cancel")
+def handle_sos_cancel(data):
+    print("SOS CANCEL:", data)
+    socketio.emit("sos_cancel", data) # Global broadcast to all
 
 # ---------------------------
 # RUN SERVER
@@ -18801,6 +18860,9 @@ body.light-mode::before {
 
 
 
+
+
+
 ================================================================================
 FILE: .\frontend\src\App.js
 ================================================================================
@@ -18834,7 +18896,10 @@ const getPersistentUser = () => {
 function App() {
   const [users, setUsers] = useState([]);
   const [toast, setToast] = useState(null);
+  const [sosAlerts, setSosAlerts] = useState([]);
+  const [isSOSActive, setIsSOSActive] = useState(false);
   const [userLocation, setUserLocation] = useState(null);
+    
   const [theme, setTheme] = useState(localStorage.getItem("theme") || "dark");
   const [isFollowing, setIsFollowing] = useState(true);
   const [activePanel, setActivePanel] = useState(null); // 'chat', 'users', or null
@@ -18871,20 +18936,35 @@ function App() {
       setUsers(Object.values(unique));
     });
 
-    socket.on("load_messages", (messages) => {
-      setChatMessages(messages);
+    socket.on("sos_alert", (data) => {
+      console.log("🚨 ALERT RECEIVED:", data);
+      setSosAlerts(prev => [...prev.filter(alert => String(alert.id) !== String(data.id)), data]);
+      
+      // Show clickable toast for other users' SOS
+      if (String(data.id) !== String(user.userId)) {
+        showToast({
+          message: `${data.name} needs help!`,
+          type: "sos",
+          userId: data.id,
+          lat: data.lat,
+          lng: data.lng
+        });
+      }
     });
 
-    socket.on("receive_message", (msg) => {
-      setChatMessages((prev) => [...prev, msg]);
+    socket.on("sos_cancel", (data) => {
+      console.log("🔥 CANCEL RECEIVED:", data);
+      setSosAlerts(prev => prev.filter(alert => String(alert.id) !== String(data.id)));
     });
 
     return () => {
       socket.off("update_users");
       socket.off("load_messages");
       socket.off("receive_message");
+      socket.off("sos_alert");
+      socket.off("sos_cancel");
     };
-  }, [user.username, currentRoom]);
+  }, [user.username, user.userId, currentRoom]);
 
   // 📜 Auto-scroll chat
   useEffect(() => {
@@ -18956,7 +19036,6 @@ function App() {
     const newSeed = Math.random().toString(36).substring(7);
     localStorage.setItem("avatarSeed", newSeed);
     setUser(prev => ({ ...prev, avatarSeed: newSeed }));
-    showToast("✨ Avatar updated!");
   };
 
   // 📝 Update Username
@@ -19013,22 +19092,46 @@ function App() {
   const handleSOS = () => {
     if (!userLocation || !user.username) return;
     
-    const data = {
-      id: user.userId,
-      name: user.username,
-      avatarSeed: user.avatarSeed,
-      ...userLocation,
-    };
+    if (isSOSActive) {
+      // 🔴 TELL SERVER YOU CANCELLED
+      socket.emit("sos_cancel", { id: user.userId });
 
-    socket.emit("sos_alert", data);
-    showToast("🚨 SOS button clicked!");
+      // 🔴 REMOVE LOCALLY
+      setSosAlerts(prev => prev.filter(alert => alert.id !== user.userId));
+
+      setIsSOSActive(false);
+      showToast("SOS cancelled", "cancel");
+    } else {
+      const data = {
+        id: user.userId,
+        name: user.username,
+        avatarSeed: user.avatarSeed,
+        ...userLocation,
+      };
+
+      socket.emit("sos_alert", data);
+      setIsSOSActive(true);
+      showToast({
+        message: `${user.username} needs help`,
+        type: "sos",
+        userId: user.userId,
+        lat: userLocation.lat,
+        lng: userLocation.lng
+      });
+    }
   };
 
-  const showToast = (message) => {
-    setToast(message);
+  const showToast = (input, type = "default") => {
+    if (typeof input === "object") {
+      setToast(input);
+    } else {
+      setToast({ message: input, type });
+    }
+    
+    // Auto-clear toast
     setTimeout(() => {
       setToast(null);
-    }, 3000);
+    }, 5000);
   };
 
   // 🛸 If no username, show Login Page
@@ -19043,6 +19146,22 @@ function App() {
     }
   };
 
+  // 📏 Haversine distance formula
+  function getDistanceKm(lat1, lon1, lat2, lon2) {
+    const R = 6371; // Earth radius in km
+    const dLat = (lat2 - lat1) * (Math.PI / 180);
+    const dLon = (lon2 - lon1) * (Math.PI / 180);
+
+    const a =
+      Math.sin(dLat / 2) ** 2 +
+      Math.cos(lat1 * Math.PI / 180) *
+      Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLon / 2) ** 2;
+
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  }
+
   return (
     <div style={{ width: "100vw", height: "100vh", position: "relative", overflow: "hidden" }} className={`${theme}-mode`}>
       <MapView 
@@ -19054,6 +19173,7 @@ function App() {
         setIsFollowing={setIsFollowing}
         onAutoDisableFollowing={handleAutoDisableFollowing}
         currentUserId={user.userId}
+        sosAlerts={sosAlerts}
       />
 
       {/* 💬 CHAT PANEL (Mica Dark) */}
@@ -19150,28 +19270,44 @@ function App() {
             {users.length > 0 ? (
               [...users]
                 .sort((a, b) => (a.id === user.userId ? -1 : b.id === user.userId ? 1 : 0))
-                .map((u, i) => (
-                  <div key={u.id}>
-                    <div 
-                      className={`user-item ${u.id === user.userId ? "current" : ""}`}
-                      onClick={() => {
-                        mapRef.current?.handleCenterOnUser(u.lng, u.lat);
-                        setIsFollowing(false);
-                        showToast(`📍 Tracking ${u.name}`);
-                      }}
-                    >
-                      <div className="user-info">
-                        <span className="user-name">
-                          {u.name} {u.id === user.userId ? <span className="you-label">(You)</span> : ""}
-                        </span>
-                        <span className="user-status">Online now</span>
+                .map((u, i) => {
+                  let distance = "Calculating...";
+
+                  if (userLocation && u.lat && u.lng) {
+                    const d = getDistanceKm(
+                      userLocation.lat,
+                      userLocation.lng,
+                      u.lat,
+                      u.lng
+                    );
+                    distance = `${d.toFixed(2)} km`;
+                  }
+
+                  return (
+                    <div key={u.id}>
+                      <div 
+                        className={`user-item ${u.id === user.userId ? "current" : ""}`}
+                        onClick={() => {
+                          mapRef.current?.handleCenterOnUser(u.lng, u.lat);
+                          setIsFollowing(false);
+                          showToast(`Tracking ${u.name}`, "tracking");
+                        }}
+                      >
+                        <div className="user-info">
+                          <span className="user-name">
+                            {u.name} {u.id === user.userId ? <span className="you-label"></span> : ""}
+                          </span>
+                          <span className="user-status">
+                            Online now {distance && u.id !== user.userId && <span className="distance" style={{ opacity: 0.7 }}> • {distance}</span>}
+                          </span>
+                        </div>
                       </div>
+                      {u.id === user.userId && users.length > 1 && (
+                        <div className="user-divider"></div>
+                      )}
                     </div>
-                    {u.id === user.userId && users.length > 1 && (
-                      <div className="user-divider"></div>
-                    )}
-                  </div>
-                ))
+                  );
+                })
             ) : (
               <div className="no-users">No users nearby</div>
             )}
@@ -19195,7 +19331,10 @@ function App() {
           className={`control-btn ${isFollowing ? "active" : ""}`} 
           onClick={() => {
             setIsFollowing(!isFollowing);
-            showToast(isFollowing ? "🛰️ Follow Me: OFF" : "🛰️ Follow Me: ON");
+            showToast(
+              isFollowing ? "Follow Me OFF" : "Follow Me ON",
+              "follow"
+            );
           }}
           title={isFollowing ? "Disable Follow Me" : "Enable Follow Me"}
         >
@@ -19250,16 +19389,85 @@ function App() {
         </button>
       </div>
 
-      <button className="sos-btn" onClick={handleSOS}>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 20, height: 20 }}>
-          <circle cx="12" cy="12" r="10" />
-          <line x1="12" y1="8" x2="12" y2="12" />
-          <line x1="12" y1="16" x2="12.01" y2="16" />
-        </svg>
-        <span>SOS</span>
+      <button
+        className={`sos-btn ${isSOSActive ? "active" : ""}`}
+        onClick={handleSOS}
+      >
+        {/* 👇 Show icon ONLY when NOT active */}
+        {!isSOSActive && (
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+            style={{ width: 20, height: 20 }}>
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+        )}
+
+        <span>{isSOSActive ? "CANCEL" : "SOS"}</span>
       </button>
 
-      {toast && <div className="toast">{toast}</div>}
+      {toast && (
+        <div 
+          className={`toast ${toast.type}`}
+          onClick={() => {
+            if (toast.type === "sos" && toast.userId !== user.userId) {
+              mapRef.current?.handleCenterOnUser(toast.lng, toast.lat);
+              setIsFollowing(false);
+              showToast({ message: "Tracking user...", type: "tracking" });
+            }
+          }}
+          style={{ 
+            cursor: toast.type === "sos" && toast.userId !== user.userId ? "pointer" : "default" 
+          }}
+        >
+          {/* ICON */}
+          {toast.type === "tracking" && (
+            <svg className="icon radar-sweep" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="9" stroke="white" strokeWidth="2" opacity="0.3"/>
+              <path className="sweep" d="M12 3 A9 9 0 0 1 21 12" stroke="white" strokeWidth="2"/>
+              <circle cx="12" cy="12" r="2" fill="white"/>
+            </svg>
+          )}
+
+          {toast.type === "follow" && (    
+            <svg className="icon follow-fly" viewBox="0 0 24 24" fill="none">
+              <path d="M3 11L22 2L13 21L11 13L3 11Z"
+                stroke="white" strokeWidth="2"/>
+            </svg>
+          )}
+
+          {toast.type === "sos" && (
+            <svg className="icon" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="10" stroke="white" strokeWidth="2"/>
+              <line x1="12" y1="8" x2="12" y2="12" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+              <line x1="12" y1="16" x2="12.01" y2="16" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+          )}
+
+          {toast.type === "cancel" && (
+            <svg className="icon" viewBox="0 0 24 24" fill="none">
+              <path d="M20 6L9 17L4 12" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          )}
+
+          <span className="text">{toast.message}</span>
+
+          {toast.type === "sos" && toast.userId !== user.userId && (
+            <button 
+              className="view-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                mapRef.current?.handleCenterOnUser(toast.lng, toast.lat);
+                setIsFollowing(false);
+                showToast({ message: "Tracking user...", type: "tracking" });
+              }}
+            >
+              VIEW
+            </button>
+          )}
+        </div>
+      )}
 
       {showProfile && (
         <ProfileModal 
@@ -19274,6 +19482,7 @@ function App() {
 }
 
 export default App;
+
 
 
 ================================================================================
@@ -19406,7 +19615,7 @@ input, button, textarea, select {
 
   box-shadow: 
     inset 0 1px 0 rgba(255, 255, 255, 0.4),
-    0 10px 30px rgba(201, 42, 42, 0.45);
+    0 6px 15px rgba(201, 42, 42, 0.25);
 
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden; /* Clip the shimmer effect */
@@ -19476,9 +19685,10 @@ input, button, textarea, select {
   }
 }
 
+/*
 .sos-btn {
   animation: sosPulse 3s infinite ease-in-out;
-}
+} */
 
 /* 🔔 TOAST POPUP */
 .toast {
@@ -19487,32 +19697,236 @@ input, button, textarea, select {
   left: 50%;
   transform: translateX(-50%);
 
-  background: rgba(15, 23, 42, 0.95);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  padding: 14px 22px;
+  border-radius: 16px;
+
+  font-size: 14px;
+  font-weight: 600;
   color: white;
 
-  padding: 14px 24px;
-  border-radius: 12px;
+  /* MICA BLACK EFFECT */
+  background: rgba(20, 20, 20, 0.65);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
 
-  font-size: 15px;
-  font-weight: 600;
+  border: 1px solid rgba(255,255,255,0.08);
 
+  box-shadow:
+    0 10px 30px rgba(0,0,0,0.4),
+    inset 0 1px 0 rgba(255,255,255,0.06);
+
+  animation: toastIn 0.25s ease;
   z-index: 10000;
-
-  box-shadow: 0 8px 20px rgba(0,0,0,0.4);
-
-  animation: slideDown 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-@keyframes slideDown {
+/* 🚨 SOS Specialization */
+.toast.sos {
+  cursor: pointer;
+  background: rgba(220, 38, 38, 0.85); /* Stronger red for urgency */
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.toast.sos:hover {
+  transform: translate(-50%, -5px) scale(1.04);
+  background: rgba(239, 68, 68, 0.95);
+  box-shadow: 
+    0 20px 40px rgba(220, 38, 38, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.view-btn {
+  margin-left: 12px;
+  background: white;
+  color: #dc2626;
+  border: none;
+  border-radius: 8px;
+  padding: 4px 12px;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s;
+  letter-spacing: 0.5px;
+}
+
+.view-btn:hover {
+  transform: scale(1.1);
+  background: #f1f5f9;
+}
+
+.view-btn:active {
+  transform: scale(0.95);
+}
+
+/* subtle accent colors */
+
+.icon {
+  width: 18px;
+  height: 18px;
+  opacity: 0.9;
+}
+
+.text {
+  letter-spacing: 0.3px;
+}
+
+@keyframes toastIn {
   from {
     opacity: 0;
-    transform: translate(-50%, -20px);
+    transform: translate(-50%, -15px);
   }
   to {
     opacity: 1;
     transform: translate(-50%, 0);
   }
 }
+
+.sos-btn.active:hover {
+  background: linear-gradient(135deg, #4ade80, #15803d);
+}
+
+
+/* green color 🟢 */
+
+/* 🟢 GREEN GLOW for CANCEL button */
+.sos-btn.active {
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+
+  box-shadow: 
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    0 6px 15px rgba(34, 197, 94, 0.25);  /* reduced glow */
+
+  animation: sosPulseGreen 3s infinite ease-in-out;
+}
+
+@keyframes sosPulseGreen {
+  0% {
+    box-shadow: 
+      inset 0 1px 0 rgba(255, 255, 255, 0.4),
+      0 10px 30px rgba(34, 197, 94, 0.5);
+  }
+  50% {
+    box-shadow: 
+      inset 0 1px 0 rgba(255, 255, 255, 0.4),
+      0 8px 20px rgba(34, 197, 94, 0.35)
+  }
+  100% {
+    box-shadow: 
+      inset 0 1px 0 rgba(255, 255, 255, 0.4),
+      0 10px 30px rgba(34, 197, 94, 0.5);
+  }
+}
+
+
+
+/*  */
+/* 🔄 rotation */
+/* 🚨 SOS Animated Marker */
+.sos-marker {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.sos-center {
+  position: absolute;
+  top: 0;
+  left: 0;
+
+  width: 12px;
+  height: 12px;
+  background-color: #ff3b30;
+  border: 2px solid white;
+  border-radius: 50%;
+
+  transform: translate(-50%, -50%);
+  z-index: 10;
+}
+
+.sos-pulse {
+  position: absolute;
+  top: 0;
+  left: 0;
+
+  width: 50px;
+  height: 50px;
+
+  background-color: rgba(255, 58, 48, 0.53);
+  border-radius: 50%;
+
+  transform: translate(-50%, -50%) scale(0);
+  opacity: 0;
+
+  animation: sosPulseWave 2s infinite ease-out;
+}
+.sos-pulse.delay {
+  animation-delay: 1s;
+}
+
+@keyframes sosPulseWave {
+  0% {
+    transform: translate(-50%, -50%) scale(0.2);
+    opacity: 0.8;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(2);
+    opacity: 0;
+  }
+}
+
+/* ✈️ FOLLOW ME ANIMATION */
+.follow-fly {
+  transform-origin: center;
+  animation: followDiagonal 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes followDiagonal {
+  0% {
+    transform: translate(0, 8px) scale(1) rotate(0deg);
+    opacity: 1;
+  }
+
+  40% {
+    transform: translate(6px, -4px) scale(1.05) rotate(-6deg);
+    opacity: 1;
+  }
+
+  100% {
+    transform: translate(36px, -32px) scale(0.6) rotate(-18deg);
+    opacity: 0;
+  }
+}
+
+
+
+
+/* 📡 RADAR SWEEP ANIMATION (TRACKING) */
+
+.radar-sweep {
+  transform-origin: center;
+}
+
+.radar-sweep .sweep {
+  transform-origin: center;
+  animation: radarSweep 1.2s linear infinite;
+}
+
+@keyframes radarSweep {
+  from {
+    transform: rotate(0deg);
+    opacity: 0.8;
+  }
+  to {
+    transform: rotate(360deg);
+    opacity: 0.2;
+  }
+}
+
 
 
 ================================================================================
@@ -20426,10 +20840,11 @@ const getDecorations = (id) => {
   return decorationCache.get(id);
 };
 
-const MapView = forwardRef(({ users, userLocation, theme, isFollowing, setIsFollowing, onAutoDisableFollowing, currentUserId }, ref) => {
+const MapView = forwardRef(({ users, userLocation, theme, isFollowing, setIsFollowing, onAutoDisableFollowing, currentUserId, sosAlerts }, ref) => {
   const mapContainer = useRef(null);
   const map = useRef(null);
   const markers = useRef({});
+  const sosMarkers = useRef({});
   const userMarker = useRef(null);
   const initialCenterSet = useRef(false);
 
@@ -20628,16 +21043,66 @@ const MapView = forwardRef(({ users, userLocation, theme, isFollowing, setIsFoll
     });
   }, [users, theme, currentUserId]);
 
-  return (
-    <div 
-      ref={mapContainer} 
-      className="map-viewport" 
-      style={{ width: "100%", height: "100vh", position: "relative" }} 
-    />
-  );
-});
+  // 🚨 Handle SOS Alerts (Enhanced with Markers)
+  useEffect(() => {
+    if (!map.current) return;
 
-export default MapView;
+    console.log("📡 SOS ALERTS UPDATE:", sosAlerts);
+
+    // Create/Update SOS Markers
+    sosAlerts.forEach((alert) => {
+      const { lngOffset, latOffset } = getDecorations(alert.id);
+      if (!sosMarkers.current[alert.id]) {
+        console.log("✨ Creating new SOS marker for:", alert.id);
+        const el = document.createElement("div");
+        el.className = "sos-marker";
+        el.innerHTML = `
+          <div class="sos-pulse"></div>
+          <div class="sos-pulse delay"></div>
+          
+        `;
+
+        const marker = new maplibregl.Marker({ 
+          element: el, 
+          anchor: "center" 
+        })
+        
+        .setLngLat([
+          alert.lng + lngOffset,
+          alert.lat + latOffset
+        ])
+        .addTo(map.current);
+
+        sosMarkers.current[alert.id] = marker;
+      } else {
+        sosMarkers.current[alert.id].setLngLat([
+          alert.lng + lngOffset,
+          alert.lat + latOffset
+        ]);
+      }
+    });
+
+    // Remove inactive SOS markers
+    Object.keys(sosMarkers.current).forEach((id) => {
+      const stillExists = sosAlerts.find((alert) => String(alert.id) === String(id));
+      if (!stillExists) {
+        console.log("🗑️ Removing SOS marker for:", id);
+        sosMarkers.current[id].remove();
+        delete sosMarkers.current[id];
+      }
+    });
+  }, [sosAlerts]);
+
+    return (
+      <div 
+        ref={mapContainer} 
+        className="map-viewport" 
+        style={{ width: "100%", height: "100vh", position: "relative" }} 
+      />
+    );
+  });
+
+  export default MapView;
 
 
 ================================================================================
