@@ -125,7 +125,7 @@ def handle_message(data):
     messages_collection.insert_one(message)
 
     # 🔥 SEND TO ROOM
-    socketio.emit("receive_message", message, to=room)
+    emit("receive_message", message, to=room)
 # ---------------------------
 # SOS ALERT
 # ---------------------------
