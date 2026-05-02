@@ -97,7 +97,6 @@ function App() {
     // 💬 RECEIVE NEW MESSAGE
     socket.on("receive_message", (msg) => {
       console.log("🔥 RECEIVED:", msg);
-      alert("Message received"); // TEMP
       setChatMessages((prev) => [...prev, msg]);
     });
 
