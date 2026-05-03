@@ -618,9 +618,9 @@ function App() {
         <button className="profile-btn" onClick={() => setShowProfile(true)}>
           <div className="avatar">
             <img 
-              src={`https://api.dicebear.com/9.x/open-peeps/svg?seed=${user.avatarSeed}`} 
+              src={`https://api.dicebear.com/9.x/lorelei/svg?seed=${encodeURIComponent(user.avatarSeed)}`} 
               alt="My Avatar" 
-              style={{ width: "100%", height: "100%", borderRadius: "50%" }}
+              style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover", display: "block" }}
             />
           </div>
         </button>
