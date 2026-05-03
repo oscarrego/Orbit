@@ -4,7 +4,6 @@ const NumericSphereBackground = ({ onAbsorb }) => {
   const canvasRef = useRef(null);
   const sphereParticles = useRef([]);
   const rotation = useRef({ x: 0, y: 0 });
-  const corePulse = useRef(0);
   const animationFrameId = useRef(null);
 
   useEffect(() => {
@@ -12,53 +11,27 @@ const NumericSphereBackground = ({ onAbsorb }) => {
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
 
-    const SPHERE_COUNT = 250;
+    const SPHERE_COUNT = 400;
     const PERSPECTIVE = 450;
-    const BASE_CORE_RADIUS = 3;
-    const BASE_FONT_SIZE = 16;
 
-    const getDynamicRadius = () => Math.min(canvas.width, canvas.height) * 0.35 ;
+    const getDynamicRadius = () => Math.min(canvas.width, canvas.height) * 0.35;
 
     const initSphere = () => {
       sphereParticles.current = [];
       const radius = getDynamicRadius();
       
       for (let i = 0; i < SPHERE_COUNT; i++) {
-        const phi = Math.acos(-1 + (2 * i) / SPHERE_COUNT) + (Math.random() - 0.5) * 0.05;
-        const theta = (Math.sqrt(SPHERE_COUNT * Math.PI) * phi) + (Math.random() * 0.2);
+        // Uniform spherical distribution to ensure NO clustering
+        const phi = Math.acos(1 - 2 * (i + 0.5) / SPHERE_COUNT);
+        const theta = Math.PI * (1 + Math.sqrt(5)) * i;
 
         sphereParticles.current.push({
           x: radius * Math.sin(phi) * Math.cos(theta),
           y: radius * Math.sin(phi) * Math.sin(theta),
           z: radius * Math.cos(phi),
-          digit: Math.floor(Math.random() * 10).toString()
+          value: Math.floor(Math.random() * 10).toString()
         });
       }
-    };
-
-    const rotateX = (p, angle) => {
-      const cos = Math.cos(angle);
-      const sin = Math.sin(angle);
-      const y = p.y * cos - p.z * sin;
-      const z = p.y * sin + p.z * cos;
-      return { ...p, y, z };
-    };
-
-    const rotateY = (p, angle) => {
-      const cos = Math.cos(angle);
-      const sin = Math.sin(angle);
-      const x = p.x * cos + p.z * sin;
-      const z = -p.x * sin + p.z * cos;
-      return { ...p, x, z };
-    };
-
-    const project = (p, centerX, centerY) => {
-      const scale = PERSPECTIVE / (PERSPECTIVE + p.z);
-      return {
-        x: centerX + p.x * scale,
-        y: centerY + p.y * scale,
-        scale
-      };
     };
 
     const resize = () => {
@@ -76,65 +49,64 @@ const NumericSphereBackground = ({ onAbsorb }) => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       const centerX = canvas.width / 2;
       const centerY = canvas.height / 2;
-      const sphereRadius = getDynamicRadius();
-      const ringRadius = sphereRadius + 30;
+      const radius = getDynamicRadius();
 
-      // Breathing animation for ring opacity
-      const time = Date.now() * 0.001;
-      const breathingAlpha = 0.315 + Math.sin(time * 2) * 0.035;
+      // APPLY ROTATION
+      rotation.current.y += 0.005;
+      rotation.current.x = 0.15; // slight X axis tilt
 
-      // 1. Draw OUTER BOUNDARY RING
-      const ringGradient = ctx.createLinearGradient(centerX, centerY - ringRadius, centerX, centerY + ringRadius);
-      ringGradient.addColorStop(0, `rgba(255, 255, 255, ${0.9 * breathingAlpha})`);
-      ringGradient.addColorStop(0.5, `rgba(255, 255, 255, ${0.5 * breathingAlpha})`);
-      ringGradient.addColorStop(1, `rgba(255, 255, 255, ${0.15 * breathingAlpha})`);
+      const angleY = rotation.current.y;
+      const angleX = rotation.current.x;
+      
+      const cosY = Math.cos(angleY);
+      const sinY = Math.sin(angleY);
+      const cosX = Math.cos(angleX);
+      const sinX = Math.sin(angleX);
 
-      ctx.beginPath();
-      ctx.arc(centerX, centerY, ringRadius, 0, Math.PI * 2);
-      ctx.strokeStyle = ringGradient;
-      ctx.lineWidth = 2.5;
-      ctx.stroke();
+      const projected = sphereParticles.current.map(p => {
+        // rotate around Y axis
+        const xPrime = p.x * cosY - p.z * sinY;
+        const zPrime = p.x * sinY + p.z * cosY;
 
-      // 2. Update and Draw Sphere
-      rotation.current.y += 0.004;
-      rotation.current.x += 0.0015;
+        // rotate slightly on X axis for tilt
+        const yPrime = p.y * cosX - zPrime * sinX;
+        const zPrimeFinal = p.y * sinX + zPrime * cosX;
 
-      const renderedSphere = sphereParticles.current.map(p => {
-        let rotated = rotateY(p, rotation.current.y);
-        rotated = rotateX(rotated, rotation.current.x);
-        const projection = project(rotated, centerX, centerY);
-        return { ...projection, z: rotated.z, digit: p.digit };
+        // PERSPECTIVE PROJECTION
+        const scale = PERSPECTIVE / (PERSPECTIVE + zPrimeFinal);
+        const screenX = centerX + xPrime * scale;
+        const screenY = centerY + yPrime * scale;
+
+        return {
+          ...p,
+          screenX,
+          screenY,
+          zPrime: zPrimeFinal
+        };
       });
 
-      renderedSphere.sort((a, b) => b.z - a.z);
+      // SORT BY DEPTH (back -> front)
+      projected.sort((a, b) => b.zPrime - a.zPrime);
 
-      renderedSphere.forEach(p => {
-        const opacity = 0.2 + p.scale * 0.8;
+      // FONT + STYLE & DEPTH EFFECT
+      projected.forEach(p => {
+        // Map z' from -radius (front) -> radius (back) to 0 -> 1
+        let normalizedZ = (p.zPrime + radius) / (2 * radius);
+        normalizedZ = Math.max(0, Math.min(1, normalizedZ));
+        
+        // Front (0) = opacity 1, Back (1) = opacity 0.2
+        const opacity = 1 - (normalizedZ * 0.8);
+        
+        // Front (0) = 14px, Back (1) = 8px
+        const size = 14 - (normalizedZ * 6);
+
+        ctx.font = `${size}px monospace`;
+        ctx.fillStyle = `rgba(255, 255, 255, ${opacity})`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-
-        if (p.scale < 0.75) {
-          ctx.fillStyle = `rgba(255, 255, 255, ${opacity * 0.5})`;
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, 1, 0, Math.PI * 2);
-          ctx.fill();
-        } else {
-          const fontSize = Math.max(6, BASE_FONT_SIZE * p.scale * 0.6);
-          ctx.fillStyle = `rgba(255, 255, 255, ${opacity})`;
-          ctx.font = `${fontSize}px monospace`;
-          ctx.fillText(p.digit, p.x, p.y);
-        }
+        
+        ctx.fillText(p.value, p.screenX, p.screenY);
       });
-
-      // 3. Draw Core
-      const currentCoreRadius = BASE_CORE_RADIUS + (corePulse.current * 4);
-      ctx.beginPath();
-      ctx.arc(centerX, centerY, currentCoreRadius, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(255, 255, 255, ${0.5 + corePulse.current * 0.5})`;
-      ctx.fill();
-
-      // Decay pulse
-      corePulse.current *= 0.92;
 
       animationFrameId.current = requestAnimationFrame(animate);
     };
@@ -147,22 +119,19 @@ const NumericSphereBackground = ({ onAbsorb }) => {
     };
   }, []);
 
-  // Expose pulse method via ref if needed, or we can use onAbsorb prop
-  // For now let's just keep it simple. If we want the starfield to trigger a pulse, 
-  // we might need a way to communicate back.
-
-return (
-  <canvas
-    ref={canvasRef}
-    style={{
-      width: '100%',
-      height: '100%',
-      position: 'absolute',
-      top: 0,
-      left: 0
-    }}
-  />
-);
+  return (
+    <canvas
+      ref={canvasRef}
+      style={{
+        width: '100%',
+        height: '100%',
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        background: 'transparent'
+      }}
+    />
+  );
 };
 
 export default NumericSphereBackground;
