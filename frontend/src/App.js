@@ -351,12 +351,15 @@ function App() {
   }
 
   const handleRecenter = () => {
-    if (userLocation) {
-      mapRef.current?.handleRecenter();
-    } else {
-      showToast("📍 Waiting for location...");
-    }
-  };
+  if (userLocation) {
+    mapRef.current?.handleRecenter();
+  } else {
+    showToast({
+  message: "Waiting for location...",
+  type: "location"
+});
+  }
+};
 
   return (
     <div style={{ width: "100vw", height: "100vh", position: "relative", overflow: "hidden" }} className={`${theme}-mode`}>
@@ -644,15 +647,15 @@ function App() {
           title="Toggle camera mode"
         >
           {is3DView ? (
-            /* ICON FOR 3D VIEW */
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M3 12l9-9 9 9-9 9-9-9z" />
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 10l9-5 9 5-9 5-9-5z" />
+              <path d="M3 14l9 5 9-5" />
             </svg>
           ) : (
-            /* ICON FOR TOP VIEW */
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="4" y="4" width="16" height="16" />
-            </svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2V6z"/>
+  <path d="M9 4v14M15 6v14"/>
+</svg>
           )}
         </button>
 
@@ -742,6 +745,17 @@ function App() {
               <path d="M20 6L9 17L4 12" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           )}
+
+          {toast.type === "location" && (
+  <svg className="icon" viewBox="0 0 24 24" fill="none">
+    <path
+      d="M12 21s6-5.5 6-10a6 6 0 1 0-12 0c0 4.5 6 10 6 10z"
+      stroke="white"
+      strokeWidth="2"
+    />
+    <circle cx="12" cy="11" r="2" fill="white" />
+  </svg>
+)}
 
           <span className="text">{toast.message}</span>
 
