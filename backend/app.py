@@ -145,6 +145,7 @@ def handle_message(data):
 
     result = messages_collection.insert_one(message)
 
+
     message_to_send = {
         **message,
         "_id": str(result.inserted_id)
