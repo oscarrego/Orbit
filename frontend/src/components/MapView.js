@@ -51,7 +51,17 @@ const getDecorations = (id) => {
   return decorationCache.get(id);
 };
 
-const startBlackHoleAnimation = (canvas, markerEl) => {
+const startBlackHoleAnimation = (canvas, markerEl, color) => {
+  const hexToRgb = (hex) => {
+  const bigint = parseInt(hex.replace("#", ""), 16);
+  return {
+    r: (bigint >> 16) & 255,
+    g: (bigint >> 8) & 255,
+    b: bigint & 255,
+  };
+};
+
+const { r, g, b } = hexToRgb(color);
   const ctx = canvas.getContext("2d");
   canvas.width = 300;
   canvas.height = 300;
@@ -89,7 +99,8 @@ const startBlackHoleAnimation = (canvas, markerEl) => {
     animId = requestAnimationFrame(loop);
     ctx.clearRect(0, 0, 300, 300);
 
-    ctx.globalCompositeOperation = "lighter";
+    ctx.shadowBlur = 15;
+    ctx.shadowColor = `rgba(${r}, ${g}, ${b}, 0.8)`;
     let activeParticles = [];
 
     particles.forEach(p => {
@@ -140,10 +151,10 @@ const startBlackHoleAnimation = (canvas, markerEl) => {
             ctx.lineTo(p.trail[i + 1].x, p.trail[i + 1].y);
             
             const progress = i / (p.trail.length - 1);
-            ctx.strokeStyle = `rgba(0, 212, 255, ${progress * p.life})`;
+            ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${progress * p.life})`;
             ctx.lineWidth = 3;
             ctx.shadowBlur = 20 * progress;
-            ctx.shadowColor = "#00d4ff";
+            ctx.shadowColor = `rgba(${r}, ${g}, ${b}, 1)`;
             ctx.stroke();
           }
         }
@@ -153,7 +164,7 @@ const startBlackHoleAnimation = (canvas, markerEl) => {
         ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
         ctx.fillStyle = `rgba(255, 255, 255, ${p.life})`;
         ctx.shadowBlur = 20;
-        ctx.shadowColor = "#00d4ff";
+        ctx.shadowColor = `rgba(${r}, ${g}, ${b}, 1)`;
         ctx.fill();
       }
     });
@@ -281,12 +292,14 @@ const MapView = forwardRef(({ users, userLocation, theme, isFollowing, setIsFoll
 
     const { lng, lat, heading } = userLocation;
     const { lngOffset, latOffset, color } = getDecorations(currentUserId);
+    
     const targetLng = lng + lngOffset;
     const targetLat = lat + latOffset;
 
     if (!userMarker.current) {
       const el = document.createElement("div");
       el.className = "user-location-marker";
+      el.style.color = color;
       el.innerHTML = `
         <canvas class="black-hole-canvas"></canvas>
         <div class="pulse-ring"></div>
@@ -296,7 +309,7 @@ const MapView = forwardRef(({ users, userLocation, theme, isFollowing, setIsFoll
       `;
 
       const canvas = el.querySelector(".black-hole-canvas");
-      startBlackHoleAnimation(canvas, el);
+      startBlackHoleAnimation(canvas, el, color);
 
       userMarker.current = new maplibregl.Marker({
         element: el,
