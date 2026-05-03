@@ -146,13 +146,13 @@
   width: 44px;
   height: 44px;
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+border: 1px solid rgba(255, 255, 255, 0.1);
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(10, 10, 10, 0.7);
-  backdrop-filter: blur(22px);
-  -webkit-backdrop-filter: blur(22px);
+background: rgba(255, 255, 255, 0.1);
+backdrop-filter: none;
+-webkit-backdrop-filter: none;
   cursor: pointer;
   transition: transform 0.15s ease, border-radius 0.2s ease;
   box-shadow: 
@@ -161,10 +161,24 @@
   color: #f1f5f9;
 }
 
+.light-mode .control-btn {
+  background: rgba(0, 0, 0, 0.6);   /* dark glass */
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  color: white;
+}
+
+/* 🌙 DARK MODE (keep your current or refine) */
+.dark-mode .control-btn {
+  background: rgba(255, 255, 255, 0.1); /* light glass */
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
 .control-btn svg {
   width: 22px;
   height: 22px;
   transition: transform 0.2s ease, opacity 0.2s ease;
+  stroke: currentColor;
 }
 
 .control-btn:hover {
@@ -1167,4 +1181,17 @@ body.light-mode::before {
   font-size: 10px;
   opacity: 0.4;
   padding: 2px 6px;
+}
+
+
+/* 🌞 LIGHT MODE — dark avatar bg */
+.light-mode .avatar {
+  background: rgba(15, 15, 15, 0.35);    
+  border: 1px solid rgba(82, 82, 82, 0.2);
+}
+
+/* 🌙 DARK MODE — keep glass look */
+.dark-mode .avatar {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
