@@ -124,6 +124,18 @@ function App() {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatMessages]);
 
+  // 🔥 MESSAGE TTL CLEANUP (Frontend)
+  useEffect(() => {
+    const cleanupInterval = setInterval(() => {
+      const now = Date.now() / 1000;
+      setChatMessages((prev) => 
+        prev.filter((msg) => now - msg.timestamp < 86400)
+      );
+    }, 60000); // Check every 60 seconds
+
+    return () => clearInterval(cleanupInterval);
+  }, []);
+
   // 📍 Send live location
   useEffect(() => {
     if (!user.username) return;

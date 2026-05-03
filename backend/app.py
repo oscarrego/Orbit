@@ -10,12 +10,16 @@ import time
 from bson.objectid import ObjectId
 
 from pymongo import MongoClient
+from datetime import datetime, timedelta
 
 MONGO_URI = os.environ.get("MONGO_URI")
 
 client = MongoClient(MONGO_URI)
 db = client["orbit"]
 messages_collection = db["messages"]
+
+# 🔥 Create TTL index (automatically delete after 24 hours)
+messages_collection.create_index("createdAt", expireAfterSeconds=86400)
 
 app = Flask(__name__)
 CORS(app)
@@ -59,13 +63,19 @@ def handle_join(data):
 
     print(f"Client {sid} joined room: {room}")
 
-    # 🔥 LOAD OLD MESSAGES FROM MONGO
+    # 🔥 LOAD OLD MESSAGES FROM MONGO (Only from last 24 hours)
+    cutoff = time.time() - 86400
     messages = list(
-        messages_collection.find({"room": room}).sort("timestamp", 1)
+        messages_collection.find({
+            "room": room,
+            "timestamp": {"$gt": cutoff}
+        }).sort("timestamp", 1)
     )
 
     for msg in messages:
         msg["_id"] = str(msg["_id"])
+        if "createdAt" in msg:
+            msg.pop("createdAt") # Remove datetime object before emitting JSON
         if "seenBy" not in msg:
             msg["seenBy"] = []
         if "senderId" not in msg:
@@ -140,10 +150,14 @@ def handle_message(data):
         "text": text,
         "room": room,
         "timestamp": time.time(),
+        "createdAt": datetime.utcnow(), # 🔥 Field for MongoDB TTL index
         "seenBy": [sender_id]
     }
 
     result = messages_collection.insert_one(message)
+
+    # Remove createdAt before sending back (datetime not JSON serializable)
+    message.pop("createdAt")
 
 
     message_to_send = {
