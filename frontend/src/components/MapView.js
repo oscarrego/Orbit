@@ -51,6 +51,125 @@ const getDecorations = (id) => {
   return decorationCache.get(id);
 };
 
+const startBlackHoleAnimation = (canvas, markerEl) => {
+  const ctx = canvas.getContext("2d");
+  canvas.width = 300;
+  canvas.height = 300;
+  const cx = 150, cy = 150;
+  let animId;
+
+  const spawnPoints = [
+    { x: 0, y: 0 },
+    { x: 300, y: 0 },
+    { x: 0, y: 300 },
+    { x: 300, y: 300 },
+    { x: 0, y: 150 },
+    { x: 300, y: 150 }
+  ];
+
+  let particles = spawnPoints.map(pt => ({
+    x: pt.x,
+    y: pt.y,
+    vx: 0,
+    vy: 0,
+    trail: [],
+    absorbed: false,
+    life: 1
+  }));
+
+  const triggerPulse = () => {
+    if (markerEl.classList.contains('absorption-pulse')) return;
+    markerEl.classList.add('absorption-pulse');
+    setTimeout(() => {
+      markerEl.classList.remove('absorption-pulse');
+    }, 600); // 0.6s pulse matching CSS animation
+  };
+
+  const loop = () => {
+    animId = requestAnimationFrame(loop);
+    ctx.clearRect(0, 0, 300, 300);
+
+    ctx.globalCompositeOperation = "lighter";
+    let activeParticles = [];
+
+    particles.forEach(p => {
+      p.trail.push({ x: p.x, y: p.y });
+      if (p.trail.length > 20) p.trail.shift();
+
+      const dx = p.x - cx;
+      const dy = p.y - cy;
+      const dist = Math.hypot(dx, dy);
+
+      if (dist > 100) {
+        // PHASE 1: CONVERGENCE
+        // move straight toward marker, smooth easing
+        p.x += (cx - p.x) * 0.015;
+        p.y += (cy - p.y) * 0.015;
+      } else if (dist > 5) {
+        // PHASE 2 & 3: ORBIT & SPIRAL INWARD
+        const closeness = 1 - (dist / 100);
+        const swirlStrength = 0.05 + closeness * 0.1;
+        const inwardPull = 0.015 + closeness * 0.04;
+
+        p.vx = -dx * inwardPull;
+        p.vy = -dy * inwardPull;
+
+        // Force CLOCKWISE rotation
+        p.vx += -dy * swirlStrength;
+        p.vy += dx * swirlStrength;
+
+        p.x += p.vx;
+        p.y += p.vy;
+      } else {
+        // PHASE 4: ABSORPTION
+        p.life -= 0.1;
+        if (p.life <= 0 && !p.absorbed) {
+          p.absorbed = true;
+          triggerPulse();
+        }
+      }
+
+      if (p.life > 0) {
+        activeParticles.push(p);
+
+        // Gradient tail: bright front -> smooth fade tail
+        if (p.trail.length > 1) {
+          for (let i = 0; i < p.trail.length - 1; i++) {
+            ctx.beginPath();
+            ctx.moveTo(p.trail[i].x, p.trail[i].y);
+            ctx.lineTo(p.trail[i + 1].x, p.trail[i + 1].y);
+            
+            const progress = i / (p.trail.length - 1);
+            ctx.strokeStyle = `rgba(0, 212, 255, ${progress * p.life})`;
+            ctx.lineWidth = 3;
+            ctx.shadowBlur = 20 * progress;
+            ctx.shadowColor = "#00d4ff";
+            ctx.stroke();
+          }
+        }
+
+        // Bright front
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255, 255, 255, ${p.life})`;
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = "#00d4ff";
+        ctx.fill();
+      }
+    });
+
+    particles = activeParticles;
+
+    // SINGLE RUN ANIMATION
+    if (particles.length === 0) {
+      cancelAnimationFrame(animId);
+      ctx.clearRect(0, 0, 300, 300);
+    }
+  };
+
+  loop();
+};
+
 const MapView = forwardRef(({ users, userLocation, theme, isFollowing, setIsFollowing, onAutoDisableFollowing, currentUserId, sosAlerts, is3DView, setIs3DView }, ref) => {
   const mapContainer = useRef(null);
   const map = useRef(null);
@@ -169,11 +288,15 @@ const MapView = forwardRef(({ users, userLocation, theme, isFollowing, setIsFoll
       const el = document.createElement("div");
       el.className = "user-location-marker";
       el.innerHTML = `
+        <canvas class="black-hole-canvas"></canvas>
         <div class="pulse-ring"></div>
         <div class="glow-ring"></div>
         <div class="direction-cone"></div>
         <div class="center-dot"></div>
       `;
+
+      const canvas = el.querySelector(".black-hole-canvas");
+      startBlackHoleAnimation(canvas, el);
 
       userMarker.current = new maplibregl.Marker({
         element: el,
