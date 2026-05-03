@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 
 const WarpTunnel = ({ isWarping }) => {
+  console.log("WarpTunnel running (from WarpTunnel.js)");
   const canvasRef = useRef(null);
   const baseParticles = useRef([]);
   const warpParticles = useRef([]);

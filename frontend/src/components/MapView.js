@@ -52,6 +52,7 @@ const getDecorations = (id) => {
 };
 
 const startBlackHoleAnimation = (canvas, markerEl, color) => {
+  console.log("startBlackHoleAnimation running (from MapView.js)");
   const hexToRgb = (hex) => {
   const bigint = parseInt(hex.replace("#", ""), 16);
   return {

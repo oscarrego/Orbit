@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import './OrbitEasterEgg.css';
 
 const OrbitEasterEgg = ({ onComplete }) => {
+  console.log("OrbitEasterEgg running (from OrbitEasterEgg.js)");
   const canvasRef = useRef(null);
   const [isExiting, setIsExiting] = useState(false);
   const [showText, setShowText] = useState(false);
