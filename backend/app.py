@@ -7,6 +7,7 @@ from flask import Flask, request
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit, join_room, leave_room
 import time
+from bson.objectid import ObjectId
 
 from pymongo import MongoClient
 
@@ -65,6 +66,10 @@ def handle_join(data):
 
     for msg in messages:
         msg["_id"] = str(msg["_id"])
+        if "seenBy" not in msg:
+            msg["seenBy"] = []
+        if "senderId" not in msg:
+            msg["senderId"] = "unknown"
 
     emit("load_messages", messages)
 # ---------------------------
@@ -123,16 +128,19 @@ def handle_message(data):
     user = data.get("user")
     text = data.get("text", "").strip()
     room = data.get("room", "Global")
+    sender_id = data.get("senderId")
 
-    if not user or not text:
+    if not user or not text or not sender_id:
         print("❌ INVALID MESSAGE")
         return
 
     message = {
+        "senderId": sender_id,
         "user": user,
         "text": text,
         "room": room,
-        "timestamp": time.time()
+        "timestamp": time.time(),
+        "seenBy": [sender_id]
     }
 
     result = messages_collection.insert_one(message)
@@ -143,6 +151,24 @@ def handle_message(data):
     }
 
     socketio.emit("receive_message", message_to_send, room=room, include_self=False)
+
+@socketio.on("message_seen")
+def handle_message_seen(data):
+    message_id = data.get("messageId")
+    user_id = data.get("userId")
+
+    if not message_id or not user_id:
+        return
+
+    messages_collection.update_one(
+        {"_id": ObjectId(message_id)},
+        {"$addToSet": {"seenBy": user_id}}
+    )
+
+    updated_msg = messages_collection.find_one({"_id": ObjectId(message_id)})
+    if updated_msg:
+        updated_msg["_id"] = str(updated_msg["_id"])
+        socketio.emit("message_updated", updated_msg, room=updated_msg["room"])
 # ---------------------------
 # SOS ALERT
 # ---------------------------

@@ -101,14 +101,20 @@ function App() {
       setChatMessages((prev) => [...prev, msg]);
     });
 
+    // 💬 MESSAGE UPDATED (SEEN STATUS)
+    socket.on("message_updated", (updatedMsg) => {
+      setChatMessages((prev) => 
+        prev.map((msg) => (msg._id === updatedMsg._id ? updatedMsg : msg))
+      );
+    });
+
     return () => {
       socket.off("update_users");
       socket.off("load_messages");
       socket.off("receive_message");
+      socket.off("message_updated");
       socket.off("sos_alert");
       socket.off("sos_cancel");
-      socket.off("load_messages");
-      socket.off("receive_message");
     };
   }, [user.username]);
 
@@ -225,16 +231,50 @@ function App() {
     if (!text) return;
 
     const msgData = {
+      senderId: user.userId,
       user: user.username,
       text: text,
       timestamp: Date.now() / 1000,
       avatarSeed: user.avatarSeed,
       room: currentRoom,
+      seenBy: [user.userId],
     };
 
     socket.emit("send_message", msgData);
     setChatMessages((prev) => [...prev, msgData]);
+    setMsgInput("");
   };
+
+  // 💬 Handle Mark as Seen
+  const markAsSeen = (messageId) => {
+    if (!messageId) return;
+    socket.emit("message_seen", { messageId, userId: user.userId });
+  };
+
+  // 💬 Seen Logic Effect (Real-time)
+  useEffect(() => {
+    if (activePanel !== "chat") return;
+
+    const unseenMessages = chatMessages.filter(
+      (msg) =>
+        msg._id &&
+        msg.senderId !== user.userId &&
+        !(msg.seenBy || []).includes(user.userId)
+    );
+
+    unseenMessages.forEach((msg) => {
+      socket.emit("message_seen", {
+        messageId: msg._id,
+        userId: user.userId,
+      });
+    });
+  }, [chatMessages, activePanel, user.userId]);
+
+  const unreadCount = chatMessages.filter(
+    (msg) =>
+      msg.senderId !== user.userId &&
+      !(msg.seenBy || []).includes(user.userId)
+  ).length;
 
   const handleSOS = () => {
     if (!userLocation || !user.username) return;
@@ -350,15 +390,22 @@ function App() {
             </div>
           ) : (
             chatMessages.map((msg, i) => (
-              <div key={i} className={`chat-msg ${msg.user === user.username ? "mine" : "other"}`}>
+              <div key={i} className={`chat-msg ${msg.senderId === user.userId ? "mine" : "other"}`}>
                 <div className="chat-bubble">
-                  {msg.user !== user.username && (
+                  {msg.senderId !== user.userId && (
                     <span className="msg-user">{msg.user}</span>
                   )}
                   <span className="msg-text">{msg.text}</span>
-                  <span className="msg-time">
-                    {new Date(msg.timestamp * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </span>
+                  <div className="msg-meta">
+                    <span className="msg-time">
+                      {new Date(msg.timestamp * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                    {msg.senderId === user.userId && (
+                      <span className="seen-status">
+                        {(msg.seenBy || []).length > 1 ? "✓✓" : "✓"}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
             ))
@@ -406,6 +453,9 @@ function App() {
             <polyline points="9 18 15 12 9 6"></polyline>
           )}
         </svg>
+        {activePanel !== "chat" && unreadCount > 0 && (
+          <span className="unread-badge">{unreadCount}</span>
+        )}
       </button>
 
       {/* 👥 ACTIVE USERS INDICATOR */}

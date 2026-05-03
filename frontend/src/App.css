@@ -457,6 +457,32 @@
   background: rgba(40, 40, 40, 0.8);
 }
 
+/* 🔴 Unread Message Badge */
+.unread-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: #ef4444;
+  color: white;
+  font-size: 11px;
+  font-weight: 800;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+  border: 1.5px solid rgba(20, 20, 20, 0.8);
+  animation: badgePop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  z-index: 10;
+}
+
+@keyframes badgePop {
+  0% { transform: scale(0); }
+  100% { transform: scale(1); }
+}
+
 /* 👥 Users Panel (Adaptive) */
 .users-panel {
   position: fixed;
