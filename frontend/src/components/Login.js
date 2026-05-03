@@ -1,18 +1,38 @@
 import React, { useState, useRef, useEffect } from 'react';
 import './Login.css';
 import NumericSphereBackground from './NumericSphereBackground';
+import StarFieldBackground from './StarFieldBackground';
 
 const Login = ({ onLogin }) => {
   const [code, setCode] = useState(['', '', '', '', '']);
   const [boxErrors, setBoxErrors] = useState([false, false, false, false, false]);
   const [showErrorMsg, setShowErrorMsg] = useState(false);
+  const [sphereCenter, setSphereCenter] = useState({ x: 0, y: 0 });
   const inputRefs = useRef([]);
+  const sphereRef = useRef(null);
 
   // Auto-focus the first box on mount
   useEffect(() => {
     if (inputRefs.current[0]) {
       inputRefs.current[0].focus();
     }
+  }, []);
+
+  // Compute sphere center for star field target
+  useEffect(() => {
+    const updateCenter = () => {
+      if (sphereRef.current) {
+        const rect = sphereRef.current.getBoundingClientRect();
+        setSphereCenter({
+          x: rect.left + rect.width / 2,
+          y: rect.top + rect.height / 2
+        });
+      }
+    };
+
+    updateCenter();
+    window.addEventListener('resize', updateCenter);
+    return () => window.removeEventListener('resize', updateCenter);
   }, []);
 
   const handleChange = (index, value) => {
@@ -71,9 +91,11 @@ const Login = ({ onLogin }) => {
 
   return (
     <div className="login-page">
+      <StarFieldBackground targetCenter={sphereCenter} />
+
       <div className="login-container">
         <div className="login-content">
-          <div className="sphere-wrapper">
+          <div className="sphere-container" ref={sphereRef}>
             <NumericSphereBackground />
           </div>
           
