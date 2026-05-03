@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import MapView from "./components/MapView";
 import Login from "./components/Login";
 import ProfileModal from "./components/ProfileModal";
+import OrbitEasterEgg from "./components/OrbitEasterEgg";
 import socket from "./components/SocketManager";
 import "./App.css";
 
@@ -36,6 +37,7 @@ function App() {
   const [fabOpen, setFabOpen] = useState(false);
   const [activePanel, setActivePanel] = useState(null); // 'chat', 'users', or null
   const [showProfile, setShowProfile] = useState(false);
+  const [showEasterEgg, setShowEasterEgg] = useState(false);
   const [is3DView, setIs3DView] = useState(false);
   
   // 💬 Chat State
@@ -242,6 +244,13 @@ function App() {
     e.preventDefault();
     const text = msgInput.trim();
     if (!text) return;
+
+    // 🔥 EASTER EGG TRIGGER
+    if (text === "/orbit") {
+      setShowEasterEgg(true);
+      setMsgInput("");
+      return;
+    }
 
     const msgData = {
       senderId: user.userId,
@@ -794,6 +803,10 @@ function App() {
           onChangeAvatar={changeAvatar}
           onUpdateUsername={updateUsername}
         />
+      )}
+
+      {showEasterEgg && (
+        <OrbitEasterEgg onComplete={() => setShowEasterEgg(false)} />
       )}
     </div>
   );
