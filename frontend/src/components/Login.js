@@ -4,6 +4,8 @@ import NumericSphereBackground from './NumericSphereBackground';
 
 const Login = ({ onLogin }) => {
   const [code, setCode] = useState(['', '', '', '', '']);
+  const [boxErrors, setBoxErrors] = useState([false, false, false, false, false]);
+  const [showErrorMsg, setShowErrorMsg] = useState(false);
   const inputRefs = useRef([]);
 
   // Auto-focus the first box on mount
@@ -14,12 +16,42 @@ const Login = ({ onLogin }) => {
   }, []);
 
   const handleChange = (index, value) => {
-    // Only allow letters, convert to uppercase
-    const char = value.replace(/[^a-zA-Z]/g, '').toUpperCase().slice(-1);
-    
-    // If empty and wasn't backspace (handled in onKeyDown), do nothing
-    if (value && !char) return;
+    // If it's a deletion, handle it normally
+    if (value === '') {
+      const newCode = [...code];
+      newCode[index] = '';
+      setCode(newCode);
+      return;
+    }
 
+    // Validation: Only allow letters
+    if (!/^[a-zA-Z]$/.test(value.slice(-1))) {
+      // Trigger error state for this specific box
+      const newErrors = [...boxErrors];
+      newErrors[index] = true;
+      setBoxErrors(newErrors);
+      setShowErrorMsg(true);
+
+      // Reset box error after animation
+      setTimeout(() => {
+        setBoxErrors(prev => {
+          const reset = [...prev];
+          reset[index] = false;
+          return reset;
+        });
+      }, 400);
+
+      // Reset global error message after a delay
+      setTimeout(() => {
+        setShowErrorMsg(false);
+      }, 1500);
+
+      return; // Stop here, don't update code
+    }
+
+    // Process valid input: letters only, uppercase
+    const char = value.slice(-1).toUpperCase();
+    
     const newCode = [...code];
     newCode[index] = char;
     setCode(newCode);
@@ -59,7 +91,7 @@ const Login = ({ onLogin }) => {
                   value={char}
                   onChange={(e) => handleChange(index, e.target.value)}
                   onKeyDown={(e) => handleKeyDown(index, e)}
-                  className="otp-box"
+                  className={`otp-box ${boxErrors[index] ? 'error' : ''}`}
                   autoComplete="off"
                 />
               ))}
@@ -74,6 +106,10 @@ const Login = ({ onLogin }) => {
               </button>
             )}
           </div>
+
+          {showErrorMsg && (
+            <p className="otp-error-text">Only letters (A–Z) are allowed</p>
+          )}
         </div>
       </div>
     </div>
