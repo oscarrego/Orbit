@@ -205,7 +205,6 @@ const MapView = forwardRef(({ users, userLocation, theme, isFollowing, setIsFoll
       pitch: 60,
       bearing: -20,
     });
-
     
 
     // 🏗️ RELIABLE LAYER RESTORATION
