@@ -1179,7 +1179,7 @@ body.light-mode::before {
 
 .maplibregl-ctrl-attrib {
   font-size: 10px;
-  opacity: 0.4;
+  opacity: 0;
   padding: 2px 6px;
 }
 
