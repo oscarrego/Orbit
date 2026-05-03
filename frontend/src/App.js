@@ -36,6 +36,7 @@ function App() {
   const [fabOpen, setFabOpen] = useState(false);
   const [activePanel, setActivePanel] = useState(null); // 'chat', 'users', or null
   const [showProfile, setShowProfile] = useState(false);
+  const [is3DView, setIs3DView] = useState(false);
   
   // 💬 Chat State
   const [chatMessages, setChatMessages] = useState([]);
@@ -349,6 +350,14 @@ function App() {
     return R * c;
   }
 
+  const handleRecenter = () => {
+    if (userLocation) {
+      mapRef.current?.handleRecenter();
+    } else {
+      showToast("📍 Waiting for location...");
+    }
+  };
+
   return (
     <div style={{ width: "100vw", height: "100vh", position: "relative", overflow: "hidden" }} className={`${theme}-mode`}>
       <MapView 
@@ -361,6 +370,8 @@ function App() {
         onAutoDisableFollowing={handleAutoDisableFollowing}
         currentUserId={user.userId}
         sosAlerts={sosAlerts}
+        is3DView={is3DView}
+        setIs3DView={setIs3DView}
       />
 
       {/* 💬 CHAT PANEL (Mica Dark) */}
@@ -548,24 +559,21 @@ function App() {
           </button>
 
           <button 
-            className="control-btn" 
-            onClick={() => {
-              if (userLocation) {
-                mapRef.current?.handleRecenter();
-              } else {
-                showToast("📍 Waiting for location...");
-              }
-            }}
-            title="Recenter to my location"
+            className="control-btn recenter-btn" 
+            onClick={handleRecenter}
+            title="Toggle camera mode"
           >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10"></circle>
-              <line x1="22" y1="12" x2="18" y2="12"></line>
-              <line x1="6" y1="12" x2="2" y2="12"></line>
-              <line x1="12" y1="6" x2="12" y2="2"></line>
-              <line x1="12" y1="22" x2="12" y2="18"></line>
-              <circle cx="12" cy="12" r="3"></circle>
-            </svg>
+            {is3DView ? (
+              /* ICON FOR 3D VIEW */
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 12l9-9 9 9-9 9-9-9z" />
+              </svg>
+            ) : (
+              /* ICON FOR TOP VIEW */
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="4" y="4" width="16" height="16" />
+              </svg>
+            )}
           </button>
 
           <button 
@@ -631,24 +639,21 @@ function App() {
         </button>
 
         <button 
-          className="control-btn" 
-          onClick={() => {
-            if (userLocation) {
-              mapRef.current?.handleRecenter();
-            } else {
-              showToast("📍 Waiting for location...");
-            }
-          }}
-          title="Recenter to my location"
+          className="control-btn recenter-btn" 
+          onClick={handleRecenter}
+          title="Toggle camera mode"
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="10"></circle>
-            <line x1="22" y1="12" x2="18" y2="12"></line>
-            <line x1="6" y1="12" x2="2" y2="12"></line>
-            <line x1="12" y1="6" x2="12" y2="2"></line>
-            <line x1="12" y1="22" x2="12" y2="18"></line>
-            <circle cx="12" cy="12" r="3"></circle>
-          </svg>
+          {is3DView ? (
+            /* ICON FOR 3D VIEW */
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 12l9-9 9 9-9 9-9-9z" />
+            </svg>
+          ) : (
+            /* ICON FOR TOP VIEW */
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="4" y="4" width="16" height="16" />
+            </svg>
+          )}
         </button>
 
         <button 

@@ -85,7 +85,7 @@
 .control-btn {
   width: 44px;
   height: 44px;
-  border-radius: 50%;
+  border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.06);
   display: flex;
   align-items: center;
@@ -94,7 +94,7 @@
   backdrop-filter: blur(22px);
   -webkit-backdrop-filter: blur(22px);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: transform 0.15s ease, border-radius 0.2s ease;
   box-shadow: 
     0 12px 40px rgba(0, 0, 0, 0.6),
     inset 0 1px 0 rgba(255, 255, 255, 0.04);
@@ -104,6 +104,7 @@
 .control-btn svg {
   width: 22px;
   height: 22px;
+  transition: transform 0.2s ease, opacity 0.2s ease;
 }
 
 .control-btn:hover {
@@ -111,8 +112,8 @@
   transform: scale(1.08);
 }
 
-.control-btn:active {
-  transform: scale(0.95);
+.control-btn:active svg {
+  transform: scale(0.9);
 }
 
 .control-btn.active {
@@ -1105,6 +1106,9 @@ body.light-mode::before {
 
 .maplibregl-ctrl-attrib {
   font-size: 1px;
+  opacity: 0.0;
+  padding: 2px 6px;
+}
   opacity: 0.0;
   padding: 2px 6px;
 }

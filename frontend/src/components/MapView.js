@@ -51,14 +51,13 @@ const getDecorations = (id) => {
   return decorationCache.get(id);
 };
 
-const MapView = forwardRef(({ users, userLocation, theme, isFollowing, setIsFollowing, onAutoDisableFollowing, currentUserId, sosAlerts }, ref) => {
+const MapView = forwardRef(({ users, userLocation, theme, isFollowing, setIsFollowing, onAutoDisableFollowing, currentUserId, sosAlerts, is3DView, setIs3DView }, ref) => {
   const mapContainer = useRef(null);
   const map = useRef(null);
   const markers = useRef({});
   const sosMarkers = useRef({});
   const userMarker = useRef(null);
   const initialCenterSet = useRef(false);
-  const [is3DView, setIs3DView] = useState(false);
 
   const styles = {
     dark: "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
