@@ -98,7 +98,7 @@ const Login = ({ onLogin }) => {
           </div>
           
           <h1 className="login-heading">Enter your Username</h1>
-          <p className="login-subtext">Choose a name to enter Orbit</p>
+          <p className="login-subtext">Create a name to enter Orbit</p>
 
           <div className="otp-row">
             <div className="otp-container">
