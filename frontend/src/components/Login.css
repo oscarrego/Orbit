@@ -70,33 +70,33 @@
 }
 
 .enter-btn {
-  width: 44px;
-  height: 44px;
+  background: rgba(255,255,255,0.95);
+  color: black;
+
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: transparent;
-  color: #ffffff;
-  font-size: 18px;
-  cursor: pointer;
-  transition: all 0.25s ease;
+
+  width: 52px;
+  height: 48px;
+
   display: flex;
   align-items: center;
   justify-content: center;
-  opacity: 0;
-  transform: translateX(10px);
-  animation: fadeInBtn 0.3s ease forwards;
-}
 
-@keyframes fadeInBtn {
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
+  font-size: 22px;        /* bigger */
+  font-weight: 900;       /* VERY IMPORTANT */
+
+  margin-left: 6px;
+
+  transition: all 0.2s ease;
+
+  font-family: "Segoe UI Symbol", "Arial", sans-serif; /* better symbol rendering */
 }
 
 .enter-btn:hover {
-  border-color: rgba(255, 255, 255, 0.6);
-  background: rgba(255, 255, 255, 0.05);
+  background: white;
+    color: black;                            /* arrow color */
+  box-shadow: 0 0 12px rgba(255, 255, 255, 0.6);
+  transform: translateY(-1px);
 }
 
 .enter-btn:active {

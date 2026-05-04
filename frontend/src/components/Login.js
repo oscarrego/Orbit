@@ -122,7 +122,12 @@ const Login = ({ onLogin }) => {
                 className="enter-btn"
                 onClick={() => onLogin(code.join(''), 'Global')}
               >
-                →
+<svg viewBox="0 0 24 24" width="22" height="22">
+  <path
+    d="M20 6v7H8l3.5-3.5-2-2L3 14l6.5 6.5 2-2L8 16h14V6z"
+    fill="black"
+  />
+</svg>
               </button>
             )}
           </div>

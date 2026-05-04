@@ -185,10 +185,14 @@ function App() {
       localStorage.setItem("avatarSeed", seed);
     }
 
-    setUser((prev) => ({ ...prev, username: trimmed, avatarSeed: seed }));
-    socket.emit("join_room", { room: finalRoom });
-    showToast(`👋 Welcome, ${trimmed}!`);
-  };
+showToast({
+  message: `Welcome, ${trimmed}!`,
+  type: "welcome"
+});
+
+setUser((prev) => ({ ...prev, username: trimmed, avatarSeed: seed }));
+  socket.emit("join_room", { room: finalRoom });
+};
 
   // 🚪 Handle Logout
   const handleLogout = () => {
@@ -752,6 +756,20 @@ function App() {
                 stroke="white" strokeWidth="2"/>
             </svg>
           )}
+
+
+{toast.type === "welcome" && (
+  <svg className="icon check-icon" viewBox="0 0 24 24" fill="none">
+    <circle className="ring" cx="12" cy="12" r="10" stroke="white" strokeWidth="2"/>
+    <path
+      d="M7 13l3 3 7-7"
+      stroke="white"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+)}
 
           {toast.type === "sos" && (
             <svg className="icon" viewBox="0 0 24 24" fill="none">
