@@ -145,26 +145,46 @@ const NumericSphereBackground = ({ onAbsorb }) => {
       }
 
       // --- SPHERE ROTATION ---
-      rotation.current.y += 0.006;
-      rotation.current.x = rotation.current.y * 0.6;
+      // Achieve a smooth, continuous diagonal rotation (bottom-right to top-left flow)
+      rotation.current.angle = (rotation.current.angle || 0) - 0.006; // Constant angular velocity
+      const t = rotation.current.angle;
 
-      const angleY = rotation.current.y;
-      const angleX = rotation.current.x;
+      // 1. Continuous spin around Y axis
+      const cosT = Math.cos(t);
+      const sinT = Math.sin(t);
       
-      const cosY = Math.cos(angleY);
-      const sinY = Math.sin(angleY);
-      const cosX = Math.cos(angleX);
-      const sinX = Math.sin(angleX);
+      // 2. Fixed tilt around Z axis to make the rotation diagonal (45 degrees)
+      const tiltZ = Math.PI / 4; 
+      const cosZ = Math.cos(tiltZ);
+      const sinZ = Math.sin(tiltZ);
+
+      // 3. Fixed tilt around X axis for 3D perspective (tilts pole slightly toward viewer)
+      const tiltX = -Math.PI / 8;
+      const cosX = Math.cos(tiltX);
+      const sinX = Math.sin(tiltX);
 
       const projected = sphereParticles.current.map(p => {
-        const x1 = p.x * cosY - p.z * sinY;
-        const z1 = p.x * sinY + p.z * cosY;
-        const y1 = p.y * cosX - z1 * sinX;
-        const z2 = p.y * sinX + z1 * cosX;
-        const scale = PERSPECTIVE / (PERSPECTIVE + z2);
-        const screenX = centerX + x1 * scale;
-        const screenY = centerY + y1 * scale;
-        return { ...p, screenX, screenY, zPrime: z2 };
+        // Step 1: Spin around Y
+        const x1 = p.x * cosT - p.z * sinT;
+        const y1 = p.y;
+        const z1 = p.x * sinT + p.z * cosT;
+
+        // Step 2: Diagonal Tilt around Z
+        const x2 = x1 * cosZ - y1 * sinZ;
+        const y2 = x1 * sinZ + y1 * cosZ;
+        const z2 = z1;
+
+        // Step 3: Perspective Tilt around X
+        const x3 = x2;
+        const y3 = y2 * cosX - z2 * sinX;
+        const z3 = y2 * sinX + z2 * cosX;
+
+        // Apply 3D perspective projection
+        const scale = PERSPECTIVE / (PERSPECTIVE + z3);
+        const screenX = centerX + x3 * scale;
+        const screenY = centerY + y3 * scale;
+        
+        return { ...p, screenX, screenY, zPrime: z3 };
       });
 
       projected.sort((a, b) => b.zPrime - a.zPrime);
@@ -185,12 +205,18 @@ const NumericSphereBackground = ({ onAbsorb }) => {
       // 3. RENDER OUTER CIRCLE
       const ringRadius = radius + 25;
       const ringGradient = ctx.createLinearGradient(centerX, centerY - ringRadius, centerX, centerY + ringRadius);
-      ringGradient.addColorStop(0, "rgba(255, 255, 255, 0.9)");
-      ringGradient.addColorStop(1, "rgba(255, 255, 255, 0.25)");
+      // TOP (bright)
+        ringGradient.addColorStop(0, "rgba(255, 255, 255, 0.9)");
+
+        // MID (soft)
+        ringGradient.addColorStop(0.5, "rgba(255, 255, 255, 0.4)");
+
+        // BOTTOM (very dim)
+        ringGradient.addColorStop(1, "rgba(255, 255, 255, 0.05)");
       ctx.beginPath();
       ctx.arc(centerX, centerY, ringRadius, 0, Math.PI * 2);
       ctx.strokeStyle = ringGradient;
-      ctx.lineWidth = 3.5;
+      ctx.lineWidth = 2.5;
       ctx.stroke();
 
       // 4. RENDER CORE (MATCHING SPHERE/PARTICLE SYSTEM)
@@ -233,30 +259,33 @@ const NumericSphereBackground = ({ onAbsorb }) => {
       // Visible during FLOW as a small seed, then full animation
       if (phaseRef.current === 'FLOW' && coreEnergy.current > 0) {
         renderCore(ctx, centerX, centerY, 2, 0.5);
-      } else if (phaseRef.current === 'CORE_ANIMATION') {
-        const DURATION = 700;
-        const progress = Math.min(1, timerRef.current / DURATION);
-        const PEAK = 20;
-        let animRadius = 0;
+      } 
+      else if (phaseRef.current === 'CORE_ANIMATION') {
+  const DURATION = 700;
+  const progress = Math.min(1, timerRef.current / DURATION);
 
-        if (progress < 0.3) {
-          const p = progress / 0.3;
-          const e = 1 - Math.pow(1 - p, 3);
-          animRadius = PEAK * e;
-        } else if (progress < 0.6) {
-          const p = (progress - 0.3) / 0.3;
-          animRadius = PEAK + p * 2;
-        } else {
-          const p = (progress - 0.6) / 0.4;
-          const e = p * p * p;
-          animRadius = (PEAK + 2) * (1 - e);
-        }
+  const FORM_PHASE = 0.1;
 
-        const animOpacity = animRadius / (PEAK + 2);
-        if (animOpacity > 0.05) {
-          renderCore(ctx, centerX, centerY, animRadius, animOpacity);
-        }
-      }
+  let animRadius;
+
+  if (progress < FORM_PHASE) {
+    // Big circle appears instantly
+    animRadius = 28;
+  } else {
+    // Smooth shrink
+    const collapseProgress = (progress - FORM_PHASE) / (1 - FORM_PHASE);
+    const ease = Math.pow(1 - collapseProgress, 1.8);
+    animRadius = 28 * ease;
+  }
+
+  // Keep tiny dot at end
+  animRadius = Math.max(0.3, animRadius);
+
+  // No fade
+  const animOpacity = 1;
+
+  renderCore(ctx, centerX, centerY, animRadius, animOpacity);
+}
 
       animationFrameId.current = requestAnimationFrame(animate);
     };
