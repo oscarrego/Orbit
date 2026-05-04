@@ -10,7 +10,7 @@ const NumericSphereBackground = ({ onAbsorb }) => {
   // Cinematic Loop State Machine
   const phaseRef = useRef('WAIT');
   const timerRef = useRef(0);
-  const lastTimeRef = useRef(Date.now());
+  const lastTimeRef = useRef(performance.now());
   const animationFrameId = useRef(null);
 
   useEffect(() => {
@@ -69,8 +69,8 @@ const NumericSphereBackground = ({ onAbsorb }) => {
     resize();
 
     const animate = () => {
-      const now = Date.now();
-      const dt = Math.min(now - lastTimeRef.current, 50); // cap delta time to 50ms to avoid huge jumps
+      const now = performance.now();
+      const dt = Math.min(now - lastTimeRef.current, 50);
       lastTimeRef.current = now;
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -83,6 +83,7 @@ const NumericSphereBackground = ({ onAbsorb }) => {
         timerRef.current += dt;
         if (timerRef.current >= 300) {
           phaseRef.current = 'SPAWN';
+          timerRef.current = 0;
         }
       } else if (phaseRef.current === 'SPAWN') {
         vacuumParticles.current = [];
@@ -91,29 +92,29 @@ const NumericSphereBackground = ({ onAbsorb }) => {
         }
         coreEnergy.current = 0;
         phaseRef.current = 'FLOW';
+        timerRef.current = 0;
       } else if (phaseRef.current === 'FLOW') {
         if (vacuumParticles.current.length === 0) {
-          phaseRef.current = 'COLLAPSE';
+          phaseRef.current = 'CORE_ANIMATION';
           timerRef.current = 0;
         }
-      } else if (phaseRef.current === 'COLLAPSE') {
+      } else if (phaseRef.current === 'CORE_ANIMATION') {
         timerRef.current += dt;
-        if (timerRef.current >= 1000) { // 1 second collapse
+        if (timerRef.current >= 700) {
           phaseRef.current = 'WAIT';
           timerRef.current = 0;
+          coreEnergy.current = 0;
         }
       }
 
-      // 1. RENDER BACKGROUND PARTICLES (Draw First)
+      // 1. RENDER BACKGROUND PARTICLES
       if (phaseRef.current === 'FLOW') {
         for (let i = vacuumParticles.current.length - 1; i >= 0; i--) {
           const p = vacuumParticles.current[i];
-          
           const dx = centerX - p.x;
           const dy = centerY - p.y;
           const dist = Math.sqrt(dx * dx + dy * dy);
 
-          // Absorption
           if (dist < 8) {
             vacuumParticles.current.splice(i, 1);
             coreEnergy.current += 1;
@@ -122,28 +123,18 @@ const NumericSphereBackground = ({ onAbsorb }) => {
 
           const nx = dx / dist;
           const ny = dy / dist;
-
-          // distance-based pull (clamp between 0.05 and 0.6)
           let pull = 0.05 + Math.max(0, 1 - dist / (radius + 80)) * 0.55; 
-          
           p.vx += nx * pull;
           p.vy += ny * pull;
-
-          // swirl (curve motion)
           p.vx += -ny * 0.03;
           p.vy += nx * 0.03;
-
-          // damping
           p.vx *= 0.98;
           p.vy *= 0.98;
-
           p.x += p.vx;
           p.y += p.vy;
 
-          // Opacity mapping (far -> faint, near -> brighter)
           let normDist = Math.min(dist / (radius + 80), 1);
           const targetOpacity = 0.1 + (1 - normDist) * 0.5;
-          // Fade in from 0
           p.opacity += (targetOpacity - p.opacity) * 0.1;
 
           ctx.fillStyle = `rgba(255, 255, 255, ${p.opacity})`;
@@ -153,9 +144,9 @@ const NumericSphereBackground = ({ onAbsorb }) => {
         }
       }
 
-      // APPLY ROTATION FOR SPHERE
-      rotation.current.y += 0.005;
-      rotation.current.x = 0.15; // slight X axis tilt
+      // --- SPHERE ROTATION ---
+      rotation.current.y += 0.006;
+      rotation.current.x = rotation.current.y * 0.6;
 
       const angleY = rotation.current.y;
       const angleX = rotation.current.x;
@@ -166,98 +157,111 @@ const NumericSphereBackground = ({ onAbsorb }) => {
       const sinX = Math.sin(angleX);
 
       const projected = sphereParticles.current.map(p => {
-        // rotate around Y axis
-        const xPrime = p.x * cosY - p.z * sinY;
-        const zPrime = p.x * sinY + p.z * cosY;
-
-        // rotate slightly on X axis for tilt
-        const yPrime = p.y * cosX - zPrime * sinX;
-        const zPrimeFinal = p.y * sinX + zPrime * cosX;
-
-        // PERSPECTIVE PROJECTION
-        const scale = PERSPECTIVE / (PERSPECTIVE + zPrimeFinal);
-        const screenX = centerX + xPrime * scale;
-        const screenY = centerY + yPrime * scale;
-
-        return {
-          ...p,
-          screenX,
-          screenY,
-          zPrime: zPrimeFinal
-        };
+        const x1 = p.x * cosY - p.z * sinY;
+        const z1 = p.x * sinY + p.z * cosY;
+        const y1 = p.y * cosX - z1 * sinX;
+        const z2 = p.y * sinX + z1 * cosX;
+        const scale = PERSPECTIVE / (PERSPECTIVE + z2);
+        const screenX = centerX + x1 * scale;
+        const screenY = centerY + y1 * scale;
+        return { ...p, screenX, screenY, zPrime: z2 };
       });
 
-      // SORT BY DEPTH (back -> front)
       projected.sort((a, b) => b.zPrime - a.zPrime);
 
       // 2. RENDER SPHERE NUMBERS
       projected.forEach(p => {
         let normalizedZ = (p.zPrime + radius) / (2 * radius);
         normalizedZ = Math.max(0, Math.min(1, normalizedZ));
-        
         const opacity = 1 - (normalizedZ * 0.8);
         const size = 14 - (normalizedZ * 6);
-
         ctx.font = `${size}px monospace`;
         ctx.fillStyle = `rgba(255, 255, 255, ${opacity})`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        
         ctx.fillText(p.value, p.screenX, p.screenY);
       });
 
       // 3. RENDER OUTER CIRCLE
+      const ringRadius = radius + 25;
+      const ringGradient = ctx.createLinearGradient(centerX, centerY - ringRadius, centerX, centerY + ringRadius);
+      ringGradient.addColorStop(0, "rgba(255, 255, 255, 0.9)");
+      ringGradient.addColorStop(1, "rgba(255, 255, 255, 0.25)");
       ctx.beginPath();
-      ctx.arc(centerX, centerY, radius + 25, 0, Math.PI * 2);
-      ctx.strokeStyle = `rgba(255, 255, 255, 0.15)`;
-      ctx.lineWidth = 1;
+      ctx.arc(centerX, centerY, ringRadius, 0, Math.PI * 2);
+      ctx.strokeStyle = ringGradient;
+      ctx.lineWidth = 3.5;
       ctx.stroke();
 
-      // 4. RENDER CORE GLOW
-      let currentCoreRadius = 0;
-      let coreOpacity = 0;
-      const BASE_CORE_RADIUS = 8;
-      const MAX_CORE_RADIUS = BASE_CORE_RADIUS + MAX_PARTICLES * 0.3;
-
-      if (phaseRef.current === 'FLOW' || phaseRef.current === 'SPAWN') {
-        currentCoreRadius = BASE_CORE_RADIUS + coreEnergy.current * 0.3;
-        coreOpacity = 0.2 + (coreEnergy.current / MAX_PARTICLES) * 0.8;
-      } else if (phaseRef.current === 'COLLAPSE') {
-        const t = timerRef.current;
-        if (t < 300) {
-          const progress = t / 300;
-          const easeOut = 1 - Math.pow(1 - progress, 3);
-          currentCoreRadius = MAX_CORE_RADIUS + easeOut * 15; // expands
-          coreOpacity = 1;
-        } else {
-          const progress = Math.min(1, (t - 300) / 700);
-          const easeIn = progress * progress * progress; // shrinks fast
-          currentCoreRadius = (MAX_CORE_RADIUS + 15) * (1 - easeIn);
-          coreOpacity = 1 - progress;
-        }
-      } else if (phaseRef.current === 'WAIT') {
-        // Core disappears entirely as per phase 8
-        currentCoreRadius = 0;
-        coreOpacity = 0;
-      }
-
-      if (currentCoreRadius > 0 && coreOpacity > 0) {
-        const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, currentCoreRadius);
-        gradient.addColorStop(0, `rgba(255, 255, 255, ${coreOpacity})`);
-        gradient.addColorStop(0.2, `rgba(255, 255, 255, ${coreOpacity * 0.8})`);
-        gradient.addColorStop(0.6, `rgba(255, 255, 255, ${coreOpacity * 0.2})`);
-        gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+      // 4. RENDER CORE (MATCHING SPHERE/PARTICLE SYSTEM)
+      const timeSec = now * 0.001;
+      
+      const renderCore = (ctx, x, y, baseRadius, alpha) => {
+        // Apply depth-based opacity (depthFactor = 1 for center)
+        const depthOpacity = (0.6 + 0.4 * 1) * alpha;
         
-        ctx.fillStyle = gradient;
+        // Micro-pulse based on energy
+        const pulsedRadius = baseRadius + (coreEnergy.current * 0.02);
+        
+        // Subtle jitter to remove "UI sharpness"
+        const jitter = Math.sin(timeSec * 4) * 0.5;
+        const finalRadius = Math.max(0, pulsedRadius + jitter);
+
+        ctx.save();
+        ctx.globalAlpha = depthOpacity;
+        ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        // Layer 1: Outer Density Layer (Slightly dim)
+       
+
+        // Layer 2: Inner Compressed Core
         ctx.beginPath();
-        ctx.arc(centerX, centerY, currentCoreRadius, 0, Math.PI * 2);
+        ctx.globalAlpha = depthOpacity;
+        ctx.arc(x, y, finalRadius, 0, Math.PI * 2);
         ctx.fill();
+
+        // Crisp definition stroke
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = `rgba(255, 255, 255, ${depthOpacity * 0.8})`;
+        ctx.stroke();
+        
+        ctx.restore();
+      };
+
+      // Visible during FLOW as a small seed, then full animation
+      if (phaseRef.current === 'FLOW' && coreEnergy.current > 0) {
+        renderCore(ctx, centerX, centerY, 2, 0.5);
+      } else if (phaseRef.current === 'CORE_ANIMATION') {
+        const DURATION = 700;
+        const progress = Math.min(1, timerRef.current / DURATION);
+        const PEAK = 20;
+        let animRadius = 0;
+
+        if (progress < 0.3) {
+          const p = progress / 0.3;
+          const e = 1 - Math.pow(1 - p, 3);
+          animRadius = PEAK * e;
+        } else if (progress < 0.6) {
+          const p = (progress - 0.3) / 0.3;
+          animRadius = PEAK + p * 2;
+        } else {
+          const p = (progress - 0.6) / 0.4;
+          const e = p * p * p;
+          animRadius = (PEAK + 2) * (1 - e);
+        }
+
+        const animOpacity = animRadius / (PEAK + 2);
+        if (animOpacity > 0.05) {
+          renderCore(ctx, centerX, centerY, animRadius, animOpacity);
+        }
       }
 
       animationFrameId.current = requestAnimationFrame(animate);
     };
 
-    lastTimeRef.current = Date.now();
+    lastTimeRef.current = performance.now();
     animate();
 
     return () => {

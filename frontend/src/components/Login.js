@@ -99,7 +99,7 @@ const Login = ({ onLogin }) => {
             <NumericSphereBackground />
           </div>
           
-          <h1 className="login-heading">Enter Username</h1>
+          <h1 className="login-heading">Enter your Username</h1>
           <p className="login-subtext">Choose a name to enter Orbit</p>
 
           <div className="otp-row">
