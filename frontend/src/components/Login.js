@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import './Login.css';
 import NumericSphereBackground from './NumericSphereBackground';
-import StarFieldBackground from './StarFieldBackground';
 
 const Login = ({ onLogin }) => {
   const [code, setCode] = useState(['', '', '', '', '']);
@@ -91,7 +90,6 @@ const Login = ({ onLogin }) => {
 
   return (
     <div className="login-page">
-      <StarFieldBackground targetCenter={sphereCenter} />
 
       <div className="login-container">
         <div className="login-content">
