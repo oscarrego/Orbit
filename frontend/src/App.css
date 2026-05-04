@@ -1264,3 +1264,29 @@ body.light-mode::before {
   to { stroke-dashoffset: 0; }
 }
 
+
+
+
+
+.room-icon .portal-ring {
+  stroke-dasharray: 60;
+  stroke-dashoffset: 60;
+  animation: ringDraw 0.5s ease forwards;
+}
+
+.room-icon .portal-arrow {
+  opacity: 0;
+  transform: translateX(-4px);
+  animation: arrowEnter 0.4s ease forwards 0.4s;
+}
+
+@keyframes ringDraw {
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes arrowEnter {
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}

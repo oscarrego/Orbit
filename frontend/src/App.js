@@ -190,6 +190,7 @@ showToast({
   type: "welcome"
 });
 
+
 setUser((prev) => ({ ...prev, username: trimmed, avatarSeed: seed }));
   socket.emit("join_room", { room: finalRoom });
 };
@@ -227,10 +228,12 @@ setUser((prev) => ({ ...prev, username: trimmed, avatarSeed: seed }));
       });
     }
 
-    showToast("✅ Name updated!");
-  };
-
-  // 🏠 Switch Room
+showToast({
+  message: "Name updated!",
+  type: "success"
+});
+};
+  //  Switch Room
   const handleSwitchRoom = () => {
     const room = roomInput.trim();
     if (!room || room === currentRoom) return;
@@ -240,8 +243,11 @@ setUser((prev) => ({ ...prev, username: trimmed, avatarSeed: seed }));
     localStorage.setItem("roomId", room);
     socket.emit("join_room", { room });
     setRoomInput("");
-    showToast(`🚀 Joined room: ${room}`);
-  };
+    showToast({
+  message: `Joined room: ${room}`,
+  type: "room"
+});
+};
 
   // 💬 Handle Send Message
   const sendMessage = (e) => {
@@ -758,9 +764,16 @@ setUser((prev) => ({ ...prev, username: trimmed, avatarSeed: seed }));
           )}
 
 
-{toast.type === "welcome" && (
+{toast.type === "success" && (
   <svg className="icon check-icon" viewBox="0 0 24 24" fill="none">
-    <circle className="ring" cx="12" cy="12" r="10" stroke="white" strokeWidth="2"/>
+    <circle
+      className="ring"
+      cx="12"
+      cy="12"
+      r="10"
+      stroke="white"
+      strokeWidth="2"
+    />
     <path
       d="M7 13l3 3 7-7"
       stroke="white"
@@ -770,6 +783,29 @@ setUser((prev) => ({ ...prev, username: trimmed, avatarSeed: seed }));
     />
   </svg>
 )}
+
+
+{toast.type === "room" && (
+  <svg className="icon room-icon" viewBox="0 0 24 24" fill="none">
+    <circle
+      className="portal-ring"
+      cx="12"
+      cy="12"
+      r="9"
+      stroke="white"
+      strokeWidth="2"
+    />
+    <path
+      className="portal-arrow"
+      d="M10 8l4 4-4 4"
+      stroke="white"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+)}
+
 
           {toast.type === "sos" && (
             <svg className="icon" viewBox="0 0 24 24" fill="none">
@@ -813,6 +849,11 @@ setUser((prev) => ({ ...prev, username: trimmed, avatarSeed: seed }));
           )}
         </div>
       )}
+
+        
+
+
+
 
       {showProfile && (
         <ProfileModal 
