@@ -1,4 +1,5 @@
-
+import eventlet
+eventlet.monkey_patch()
 import os
 
 
@@ -26,7 +27,7 @@ CORS(app)
 socketio = SocketIO(
     app,
     cors_allowed_origins="*",
-    async_mode="gevent",
+    async_mode="eventlet",
     logger=True,
     engineio_logger=True
 )
