@@ -302,11 +302,11 @@ if (phaseRef.current === 'CORE_ANIMATION') {
     <canvas
       ref={canvasRef}
       style={{
-        width: '110%',
-        height: '110%',
+        width: '100%',
+        height: '100%',
         position: 'absolute',
-        top: -60,
-        left: -15,
+        top: 0,
+        left: 0,
         background: 'transparent'
       }}
     />
