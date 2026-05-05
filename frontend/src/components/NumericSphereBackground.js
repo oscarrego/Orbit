@@ -22,7 +22,9 @@ const NumericSphereBackground = ({ onAbsorb }) => {
     const PERSPECTIVE = 450;
     const MAX_PARTICLES = 100;
 
-    const getDynamicRadius = () => Math.min(canvas.width, canvas.height) * 0.35;
+    const getLogicalWidth = () => canvas.clientWidth || 300;
+    const getLogicalHeight = () => canvas.clientHeight || 150;
+    const getDynamicRadius = () => Math.min(getLogicalWidth(), getLogicalHeight()) * 0.35;
 
     const initSphere = () => {
       sphereParticles.current = [];
@@ -57,8 +59,19 @@ const NumericSphereBackground = ({ onAbsorb }) => {
     const resize = () => {
       const parent = canvas.parentElement;
       if (!parent) return;
-      canvas.width = parent.clientWidth;
-      canvas.height = parent.clientHeight;
+      
+      const width = parent.clientWidth;
+      const height = parent.clientHeight;
+      const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+      
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+      
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.scale(dpr, dpr);
+      
       initSphere();
       vacuumParticles.current = [];
       phaseRef.current = 'WAIT';
@@ -70,12 +83,17 @@ const NumericSphereBackground = ({ onAbsorb }) => {
 
     const animate = () => {
       const now = performance.now();
-      const dt = Math.min(now - lastTimeRef.current, 50);
+      const rawDt = now - lastTimeRef.current;
+      const dt = Math.min(rawDt, 50);
+      const timeScale = dt / (1000 / 60); // Normalize to 60fps
       lastTimeRef.current = now;
 
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      const centerX = canvas.width / 2;
-      const centerY = canvas.height / 2;
+      const width = getLogicalWidth();
+      const height = getLogicalHeight();
+      ctx.clearRect(0, 0, width, height);
+      
+      const centerX = width / 2;
+      const centerY = height / 2;
       const radius = getDynamicRadius();
 
       // --- PHASE LOGIC ---
@@ -87,7 +105,8 @@ const NumericSphereBackground = ({ onAbsorb }) => {
         }
       } else if (phaseRef.current === 'SPAWN') {
         vacuumParticles.current = [];
-        for (let i = 0; i < MAX_PARTICLES; i++) {
+        const particleCount = width < 768 ? 40 : MAX_PARTICLES;
+        for (let i = 0; i < particleCount; i++) {
           vacuumParticles.current.push(spawnParticle(centerX, centerY, radius));
         }
         coreEnergy.current = 0;
@@ -95,18 +114,11 @@ const NumericSphereBackground = ({ onAbsorb }) => {
         timerRef.current = 0;
       } 
       else if (phaseRef.current === 'FLOW') {
-
-  timerRef.current += dt; // IMPORTANT
-
-  if (timerRef.current > 3500) {
-    phaseRef.current = 'CORE_ANIMATION';
-    timerRef.current = 0;
-  }
-
-  // your particle update logic continues here...
-
-
-
+        timerRef.current += dt;
+        if (timerRef.current > 3500) {
+          phaseRef.current = 'CORE_ANIMATION';
+          timerRef.current = 0;
+        }
       } else if (phaseRef.current === 'CORE_ANIMATION') {
         timerRef.current += dt;
         if (timerRef.current >= 700) {
@@ -133,18 +145,22 @@ const NumericSphereBackground = ({ onAbsorb }) => {
           const nx = dx / dist;
           const ny = dy / dist;
           let pull = 0.05 + Math.max(0, 1 - dist / (radius + 80)) * 0.55; 
-          p.vx += nx * pull;
-          p.vy += ny * pull;
-          p.vx += -ny * 0.03;
-          p.vy += nx * 0.03;
-          p.vx *= 0.98;
-          p.vy *= 0.98;
-          p.x += p.vx;
-          p.y += p.vy;
+          
+          p.vx += nx * pull * timeScale;
+          p.vy += ny * pull * timeScale;
+          p.vx += -ny * 0.03 * timeScale;
+          p.vy += nx * 0.03 * timeScale;
+          
+          const damping = Math.pow(0.98, timeScale);
+          p.vx *= damping;
+          p.vy *= damping;
+          
+          p.x += p.vx * timeScale;
+          p.y += p.vy * timeScale;
 
           let normDist = Math.min(dist / (radius + 80), 1);
           const targetOpacity = 0.1 + (1 - normDist) * 0.5;
-          p.opacity += (targetOpacity - p.opacity) * 0.1;
+          p.opacity += (targetOpacity - p.opacity) * (0.1 * timeScale);
 
           ctx.fillStyle = `rgba(255, 255, 255, ${p.opacity})`;
           ctx.beginPath();
@@ -155,7 +171,7 @@ const NumericSphereBackground = ({ onAbsorb }) => {
 
       // --- SPHERE ROTATION ---
       // Achieve a smooth, continuous diagonal rotation (bottom-right to top-left flow)
-      rotation.current.angle = (rotation.current.angle || 0) - 0.006; // Constant angular velocity
+      rotation.current.angle = (rotation.current.angle || 0) - (0.006 * timeScale);
       const t = rotation.current.angle;
 
       // 1. Continuous spin around Y axis
@@ -215,13 +231,11 @@ const NumericSphereBackground = ({ onAbsorb }) => {
       const ringRadius = radius + 25;
       const ringGradient = ctx.createLinearGradient(centerX, centerY - ringRadius, centerX, centerY + ringRadius);
       // TOP (bright)
-        ringGradient.addColorStop(0, "rgba(255, 255, 255, 0.9)");
-
-        // MID (soft)
-        ringGradient.addColorStop(0.5, "rgba(255, 255, 255, 0.4)");
-
-        // BOTTOM (very dim)
-        ringGradient.addColorStop(1, "rgba(255, 255, 255, 0.05)");
+      ringGradient.addColorStop(0, "rgba(255, 255, 255, 0.9)");
+      // MID (soft)
+      ringGradient.addColorStop(0.5, "rgba(255, 255, 255, 0.4)");
+      // BOTTOM (very dim)
+      ringGradient.addColorStop(1, "rgba(255, 255, 255, 0.05)");
       ctx.beginPath();
       ctx.arc(centerX, centerY, ringRadius, 0, Math.PI * 2);
       ctx.strokeStyle = ringGradient;
@@ -265,26 +279,26 @@ const NumericSphereBackground = ({ onAbsorb }) => {
         ctx.restore();
       };
 
-// ONLY core animation (no small dot phase)
-if (phaseRef.current === 'CORE_ANIMATION') {
-  const DURATION = 700;
-  const progress = Math.min(1, timerRef.current / DURATION);
+      // ONLY core animation (no small dot phase)
+      if (phaseRef.current === 'CORE_ANIMATION') {
+        const DURATION = 700;
+        const progress = Math.min(1, timerRef.current / DURATION);
 
-  let animRadius;
+        let animRadius;
 
-  // START immediately with big circle
-  const collapseProgress = progress;
-  const ease = Math.pow(1 - collapseProgress, 1.8);
-  animRadius = 28 * ease;
+        // START immediately with big circle
+        const collapseProgress = progress;
+        const ease = Math.pow(1 - collapseProgress, 1.8);
+        animRadius = 28 * ease;
 
-  // keep tiny dot at end
-  animRadius = Math.max(0.3, animRadius);
+        // keep tiny dot at end
+        animRadius = Math.max(0.3, animRadius);
 
-  // slightly softer opacity (optional)
-  const animOpacity = 0.9;
+        // slightly softer opacity (optional)
+        const animOpacity = 0.9;
 
-  renderCore(ctx, centerX, centerY, animRadius, animOpacity);
-}
+        renderCore(ctx, centerX, centerY, animRadius, animOpacity);
+      }
 
       animationFrameId.current = requestAnimationFrame(animate);
     };
