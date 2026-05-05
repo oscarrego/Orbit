@@ -19,6 +19,7 @@ INCLUDE_EXTENSIONS = (
 )
 
 
+
 # Folders to ignore
 IGNORE_DIRS = {"node_modules", ".git", "build", "dist", "__pycache__"}
 
@@ -20970,6 +20971,70 @@ FILE: .\frontend\src\components\Login.css
   }
 }
 
+/* Mobile Specific Improvements */
+@media (max-width: 480px) {
+  .mobile-login-wrapper {
+    width: 100%;
+    padding: 20px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .mobile-login-wrapper .otp-row {
+    flex-direction: column;
+    width: 100%;
+    gap: 16px;
+    margin-top: 10px;
+  }
+
+  .mobile-login-wrapper .otp-container {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+  }
+
+  .mobile-login-wrapper .otp-box {
+    flex: 1;
+    max-width: 56px;
+    height: 64px;
+    font-size: 24px;
+    border-radius: 12px;
+  }
+
+  .mobile-login-wrapper .enter-btn {
+    width: 100%;
+    height: 60px;
+    margin-left: 0;
+    border-radius: 12px;
+  }
+
+  .mobile-login-wrapper .sphere-container {
+    width: 280px;
+    height: 280px;
+    margin-bottom: 20px;
+  }
+
+  .mobile-login-wrapper .login-heading {
+    font-size: 28px;
+    margin-bottom: 8px;
+  }
+
+  .mobile-login-wrapper .login-subtext {
+    font-size: 15px;
+    margin-bottom: 32px;
+  }
+}
+
+@media (max-width: 480px) {
+  .login-page {
+    align-items: flex-start;
+    padding-top: 40px;
+  }
+}
 
 
 ================================================================================
@@ -21068,51 +21133,52 @@ const Login = ({ onLogin }) => {
 
   return (
     <div className="login-page">
-
-      <div className="login-container">
-        <div className="login-content">
-          <div className="sphere-container" ref={sphereRef}>
-            <NumericSphereBackground />
-          </div>
-          
-          <h1 className="login-heading">Enter your Username</h1>
-          <p className="login-subtext">Create a name to enter Orbit</p>
-
-          <div className="otp-row">
-            <div className="otp-container">
-              {code.map((char, index) => (
-                <input
-                  key={index}
-                  ref={(el) => (inputRefs.current[index] = el)}
-                  type="text"
-                  maxLength={1}
-                  value={char}
-                  onChange={(e) => handleChange(index, e.target.value)}
-                  onKeyDown={(e) => handleKeyDown(index, e)}
-                  className={`otp-box ${boxErrors[index] ? 'error' : ''}`}
-                  autoComplete="off"
-                />
-              ))}
+      <div className="mobile-login-wrapper">
+        <div className="login-container">
+          <div className="login-content">
+            <div className="sphere-container" ref={sphereRef}>
+              <NumericSphereBackground />
             </div>
+            
+            <h1 className="login-heading">Enter your Username</h1>
+            <p className="login-subtext">Create a name to enter Orbit</p>
 
-            {code.join('').length === 5 && (
-              <button
-                className="enter-btn"
-                onClick={() => onLogin(code.join(''), 'Global')}
-              >
+            <div className="otp-row">
+              <div className="otp-container">
+                {code.map((char, index) => (
+                  <input
+                    key={index}
+                    ref={(el) => (inputRefs.current[index] = el)}
+                    type="text"
+                    maxLength={1}
+                    value={char}
+                    onChange={(e) => handleChange(index, e.target.value)}
+                    onKeyDown={(e) => handleKeyDown(index, e)}
+                    className={`otp-box ${boxErrors[index] ? 'error' : ''}`}
+                    autoComplete="off"
+                  />
+                ))}
+              </div>
+
+              {code.join('').length === 5 && (
+                <button
+                  className="enter-btn"
+                  onClick={() => onLogin(code.join(''), 'Global')}
+                >
 <svg viewBox="0 0 24 24" width="22" height="22">
   <path
     d="M20 6v7H8l3.5-3.5-2-2L3 14l6.5 6.5 2-2L8 16h14V6z"
     fill="black"
   />
 </svg>
-              </button>
+                </button>
+              )}
+            </div>
+
+            {showErrorMsg && (
+              <p className="otp-error-text">Only letters (A–Z) are allowed</p>
             )}
           </div>
-
-          {showErrorMsg && (
-            <p className="otp-error-text">Only letters (A–Z) are allowed</p>
-          )}
         </div>
       </div>
     </div>
@@ -21679,7 +21745,9 @@ const NumericSphereBackground = ({ onAbsorb }) => {
     const PERSPECTIVE = 450;
     const MAX_PARTICLES = 100;
 
-    const getDynamicRadius = () => Math.min(canvas.width, canvas.height) * 0.35;
+    const getLogicalWidth = () => canvas.clientWidth || 300;
+    const getLogicalHeight = () => canvas.clientHeight || 150;
+    const getDynamicRadius = () => Math.min(getLogicalWidth(), getLogicalHeight()) * 0.35;
 
     const initSphere = () => {
       sphereParticles.current = [];
@@ -21714,8 +21782,19 @@ const NumericSphereBackground = ({ onAbsorb }) => {
     const resize = () => {
       const parent = canvas.parentElement;
       if (!parent) return;
-      canvas.width = parent.clientWidth;
-      canvas.height = parent.clientHeight;
+      
+      const width = parent.clientWidth;
+      const height = parent.clientHeight;
+      const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+      
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+      
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.scale(dpr, dpr);
+      
       initSphere();
       vacuumParticles.current = [];
       phaseRef.current = 'WAIT';
@@ -21727,12 +21806,17 @@ const NumericSphereBackground = ({ onAbsorb }) => {
 
     const animate = () => {
       const now = performance.now();
-      const dt = Math.min(now - lastTimeRef.current, 50);
+      const rawDt = now - lastTimeRef.current;
+      const dt = Math.min(rawDt, 50);
+      const timeScale = dt / (1000 / 60); // Normalize to 60fps
       lastTimeRef.current = now;
 
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      const centerX = canvas.width / 2;
-      const centerY = canvas.height / 2;
+      const width = getLogicalWidth();
+      const height = getLogicalHeight();
+      ctx.clearRect(0, 0, width, height);
+      
+      const centerX = width / 2;
+      const centerY = height / 2;
       const radius = getDynamicRadius();
 
       // --- PHASE LOGIC ---
@@ -21744,7 +21828,8 @@ const NumericSphereBackground = ({ onAbsorb }) => {
         }
       } else if (phaseRef.current === 'SPAWN') {
         vacuumParticles.current = [];
-        for (let i = 0; i < MAX_PARTICLES; i++) {
+        const particleCount = width < 768 ? 40 : MAX_PARTICLES;
+        for (let i = 0; i < particleCount; i++) {
           vacuumParticles.current.push(spawnParticle(centerX, centerY, radius));
         }
         coreEnergy.current = 0;
@@ -21752,18 +21837,11 @@ const NumericSphereBackground = ({ onAbsorb }) => {
         timerRef.current = 0;
       } 
       else if (phaseRef.current === 'FLOW') {
-
-  timerRef.current += dt; // IMPORTANT
-
-  if (timerRef.current > 3500) {
-    phaseRef.current = 'CORE_ANIMATION';
-    timerRef.current = 0;
-  }
-
-  // your particle update logic continues here...
-
-
-
+        timerRef.current += dt;
+        if (timerRef.current > 3500) {
+          phaseRef.current = 'CORE_ANIMATION';
+          timerRef.current = 0;
+        }
       } else if (phaseRef.current === 'CORE_ANIMATION') {
         timerRef.current += dt;
         if (timerRef.current >= 700) {
@@ -21789,19 +21867,23 @@ const NumericSphereBackground = ({ onAbsorb }) => {
 
           const nx = dx / dist;
           const ny = dy / dist;
-          let pull = 0.05 + Math.max(0, 1 - dist / (radius + 80)) * 0.55; 
-          p.vx += nx * pull;
-          p.vy += ny * pull;
-          p.vx += -ny * 0.03;
-          p.vy += nx * 0.03;
-          p.vx *= 0.98;
-          p.vy *= 0.98;
-          p.x += p.vx;
-          p.y += p.vy;
+          let pull = 0.05 + Math.max(0, 1 - dist / (radius + 80)) * 0.75; 
+          
+          p.vx += nx * pull * timeScale;
+          p.vy += ny * pull * timeScale;
+          p.vx += -ny * 0.05 * timeScale;
+          p.vy += nx * 0.05 * timeScale;
+          
+          const damping = Math.pow(0.98, timeScale);
+          p.vx *= damping;
+          p.vy *= damping;
+          
+          p.x += p.vx * timeScale * 1.3;
+          p.y += p.vy * timeScale * 1.3;
 
           let normDist = Math.min(dist / (radius + 80), 1);
           const targetOpacity = 0.1 + (1 - normDist) * 0.5;
-          p.opacity += (targetOpacity - p.opacity) * 0.1;
+          p.opacity += (targetOpacity - p.opacity) * (0.1 * timeScale);
 
           ctx.fillStyle = `rgba(255, 255, 255, ${p.opacity})`;
           ctx.beginPath();
@@ -21812,7 +21894,7 @@ const NumericSphereBackground = ({ onAbsorb }) => {
 
       // --- SPHERE ROTATION ---
       // Achieve a smooth, continuous diagonal rotation (bottom-right to top-left flow)
-      rotation.current.angle = (rotation.current.angle || 0) - 0.006; // Constant angular velocity
+      rotation.current.angle = (rotation.current.angle || 0) - (0.010 * timeScale);
       const t = rotation.current.angle;
 
       // 1. Continuous spin around Y axis
@@ -21872,13 +21954,11 @@ const NumericSphereBackground = ({ onAbsorb }) => {
       const ringRadius = radius + 25;
       const ringGradient = ctx.createLinearGradient(centerX, centerY - ringRadius, centerX, centerY + ringRadius);
       // TOP (bright)
-        ringGradient.addColorStop(0, "rgba(255, 255, 255, 0.9)");
-
-        // MID (soft)
-        ringGradient.addColorStop(0.5, "rgba(255, 255, 255, 0.4)");
-
-        // BOTTOM (very dim)
-        ringGradient.addColorStop(1, "rgba(255, 255, 255, 0.05)");
+      ringGradient.addColorStop(0, "rgba(255, 255, 255, 0.9)");
+      // MID (soft)
+      ringGradient.addColorStop(0.5, "rgba(255, 255, 255, 0.4)");
+      // BOTTOM (very dim)
+      ringGradient.addColorStop(1, "rgba(255, 255, 255, 0.05)");
       ctx.beginPath();
       ctx.arc(centerX, centerY, ringRadius, 0, Math.PI * 2);
       ctx.strokeStyle = ringGradient;
@@ -21922,26 +22002,26 @@ const NumericSphereBackground = ({ onAbsorb }) => {
         ctx.restore();
       };
 
-// ONLY core animation (no small dot phase)
-if (phaseRef.current === 'CORE_ANIMATION') {
-  const DURATION = 700;
-  const progress = Math.min(1, timerRef.current / DURATION);
+      // ONLY core animation (no small dot phase)
+      if (phaseRef.current === 'CORE_ANIMATION') {
+        const DURATION = 700;
+        const progress = Math.min(1, timerRef.current / DURATION);
 
-  let animRadius;
+        let animRadius;
 
-  // START immediately with big circle
-  const collapseProgress = progress;
-  const ease = Math.pow(1 - collapseProgress, 1.8);
-  animRadius = 28 * ease;
+        // START immediately with big circle
+        const collapseProgress = progress;
+        const ease = Math.pow(1 - collapseProgress, 1.8);
+        animRadius = 28 * ease;
 
-  // keep tiny dot at end
-  animRadius = Math.max(0.3, animRadius);
+        // keep tiny dot at end
+        animRadius = Math.max(0.3, animRadius);
 
-  // slightly softer opacity (optional)
-  const animOpacity = 0.9;
+        // slightly softer opacity (optional)
+        const animOpacity = 0.9;
 
-  renderCore(ctx, centerX, centerY, animRadius, animOpacity);
-}
+        renderCore(ctx, centerX, centerY, animRadius, animOpacity);
+      }
 
       animationFrameId.current = requestAnimationFrame(animate);
     };

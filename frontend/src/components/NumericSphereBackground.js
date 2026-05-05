@@ -7,6 +7,7 @@ const NumericSphereBackground = ({ onAbsorb }) => {
   const coreEnergy = useRef(0);
   const rotation = useRef({ x: 0, y: 0 });
   
+  
   // Cinematic Loop State Machine
   const phaseRef = useRef('WAIT');
   const timerRef = useRef(0);
