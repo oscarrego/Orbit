@@ -90,51 +90,52 @@ const Login = ({ onLogin }) => {
 
   return (
     <div className="login-page">
-
-      <div className="login-container">
-        <div className="login-content">
-          <div className="sphere-container" ref={sphereRef}>
-            <NumericSphereBackground />
-          </div>
-          
-          <h1 className="login-heading">Enter your Username</h1>
-          <p className="login-subtext">Create a name to enter Orbit</p>
-
-          <div className="otp-row">
-            <div className="otp-container">
-              {code.map((char, index) => (
-                <input
-                  key={index}
-                  ref={(el) => (inputRefs.current[index] = el)}
-                  type="text"
-                  maxLength={1}
-                  value={char}
-                  onChange={(e) => handleChange(index, e.target.value)}
-                  onKeyDown={(e) => handleKeyDown(index, e)}
-                  className={`otp-box ${boxErrors[index] ? 'error' : ''}`}
-                  autoComplete="off"
-                />
-              ))}
+      <div className="mobile-login-wrapper">
+        <div className="login-container">
+          <div className="login-content">
+            <div className="sphere-container" ref={sphereRef}>
+              <NumericSphereBackground />
             </div>
+            
+            <h1 className="login-heading">Enter your Username</h1>
+            <p className="login-subtext">Create a name to enter Orbit</p>
 
-            {code.join('').length === 5 && (
-              <button
-                className="enter-btn"
-                onClick={() => onLogin(code.join(''), 'Global')}
-              >
+            <div className="otp-row">
+              <div className="otp-container">
+                {code.map((char, index) => (
+                  <input
+                    key={index}
+                    ref={(el) => (inputRefs.current[index] = el)}
+                    type="text"
+                    maxLength={1}
+                    value={char}
+                    onChange={(e) => handleChange(index, e.target.value)}
+                    onKeyDown={(e) => handleKeyDown(index, e)}
+                    className={`otp-box ${boxErrors[index] ? 'error' : ''}`}
+                    autoComplete="off"
+                  />
+                ))}
+              </div>
+
+              {code.join('').length === 5 && (
+                <button
+                  className="enter-btn"
+                  onClick={() => onLogin(code.join(''), 'Global')}
+                >
 <svg viewBox="0 0 24 24" width="22" height="22">
   <path
     d="M20 6v7H8l3.5-3.5-2-2L3 14l6.5 6.5 2-2L8 16h14V6z"
     fill="black"
   />
 </svg>
-              </button>
+                </button>
+              )}
+            </div>
+
+            {showErrorMsg && (
+              <p className="otp-error-text">Only letters (A–Z) are allowed</p>
             )}
           </div>
-
-          {showErrorMsg && (
-            <p className="otp-error-text">Only letters (A–Z) are allowed</p>
-          )}
         </div>
       </div>
     </div>

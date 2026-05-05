@@ -164,3 +164,62 @@
     font-size: 26px;
   }
 }
+
+/* Mobile Specific Improvements */
+@media (max-width: 480px) {
+  .mobile-login-wrapper {
+    width: 100%;
+    padding: 20px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .mobile-login-wrapper .otp-row {
+    flex-direction: column;
+    width: 100%;
+    gap: 16px;
+    margin-top: 10px;
+  }
+
+  .mobile-login-wrapper .otp-container {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+  }
+
+  .mobile-login-wrapper .otp-box {
+    flex: 1;
+    max-width: 56px;
+    height: 64px;
+    font-size: 24px;
+    border-radius: 12px;
+  }
+
+  .mobile-login-wrapper .enter-btn {
+    width: 100%;
+    height: 60px;
+    margin-left: 0;
+    border-radius: 12px;
+  }
+
+  .mobile-login-wrapper .sphere-container {
+    width: 280px;
+    height: 280px;
+    margin-bottom: 20px;
+  }
+
+  .mobile-login-wrapper .login-heading {
+    font-size: 28px;
+    margin-bottom: 8px;
+  }
+
+  .mobile-login-wrapper .login-subtext {
+    font-size: 15px;
+    margin-bottom: 32px;
+  }
+}
+
