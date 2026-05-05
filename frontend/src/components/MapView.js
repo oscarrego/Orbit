@@ -357,26 +357,70 @@ const MapView = forwardRef(({ users, userLocation, theme, isFollowing, setIsFoll
   }, [userLocation, theme, isFollowing, currentUserId, is3DView]);
 
   const add3D = () => {
-    if (!map.current || map.current.getLayer("3d-buildings")) return;
+    if (!map.current || !map.current.isStyleLoaded()) return;
+
+    if (map.current.getLayer("3d-buildings")) return;
+
+    const style = map.current.getStyle();
+    console.log(style.sources);
+    console.log(style.layers);
+
+    const buildingLayer = style.layers.find(
+      l =>
+        l.type === "fill" &&
+        l["source-layer"] &&
+        l["source-layer"].includes("building")
+    );
+
+    if (!buildingLayer) {
+      console.warn("No valid building layer found");
+      return;
+    }
+
+    const source = buildingLayer.source;
+    const sourceLayer = buildingLayer["source-layer"];
+
+    console.log("Using source:", source);
+    console.log("Using source-layer:", sourceLayer);
+
+    const labelLayerId = style.layers.find(
+      (layer) => layer.type === "symbol" && layer.layout && layer.layout["text-field"]
+    )?.id;
 
     map.current.addLayer({
       id: "3d-buildings",
-      source: "openmaptiles",
-      "source-layer": "building",
+      source: source,
+      "source-layer": sourceLayer,
       type: "fill-extrusion",
       minzoom: 14,
       paint: {
-        "fill-extrusion-color": "#888",
+        "fill-extrusion-color": "#bfbfbf",
         "fill-extrusion-height": [
           "interpolate",
           ["linear"],
           ["zoom"],
           14, 0,
-          18, 120
+          15, 80,
+          16, 200,
+          17, 400,
+          18, 800
         ],
-        "fill-extrusion-opacity": 0.85,
-      },
+        "fill-extrusion-base": 0,
+        "fill-extrusion-opacity": 1,
+        "fill-extrusion-vertical-gradient": true
+      }
+    }, labelLayerId);
+
+    map.current.setLight({
+      anchor: "viewport",
+      position: [1.2, 80, 60],
+      color: "#ffffff",
+      intensity: 0.8
     });
+
+    map.current.setPitch(65);
+    map.current.setBearing(40);
+    map.current.setZoom(17);
   };
 
   useEffect(() => {

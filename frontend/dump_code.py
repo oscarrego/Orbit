@@ -1,67 +1,48 @@
 import os
 
-# 🔧 CONFIG
-OUTPUT_FILE = "combined_code.txt"
+# Folder to scan (current directory)
+ROOT_DIR = "."
 
-IGNORE_DIRS = {
-    "node_modules",
-    ".git",
-    "__pycache__",
-    "dist",
-    "build",
-    ".next",
-    "venv"
-}
+# Output file
+OUTPUT_FILE = "all_code_dump.txt"
 
-ALLOWED_EXTENSIONS = {
-    ".js", ".ts", ".jsx", ".tsx",
+# File extensions to include
+INCLUDE_EXTENSIONS = (
+    ".js", ".jsx", ".ts", ".tsx",
     ".py", ".html", ".css",
     ".json", ".md"
-}
+)
 
+# Folders to ignore
+IGNORE_DIRS = {"node_modules", ".git", "build", "dist", "__pycache__"}
 
-def is_valid_file(filename):
-    return any(filename.lower().endswith(ext) for ext in ALLOWED_EXTENSIONS)
+def should_include(file):
+    return file.endswith(INCLUDE_EXTENSIONS)
 
+def main():
+    with open(OUTPUT_FILE, "w", encoding="utf-8") as out:
+        for root, dirs, files in os.walk(ROOT_DIR):
+            # Remove ignored directories
+            dirs[:] = [d for d in dirs if d not in IGNORE_DIRS]
 
-def collect_code(base_path):
-    combined = []
+            for file in files:
+                if should_include(file):
+                    file_path = os.path.join(root, file)
 
-    for root, dirs, files in os.walk(base_path):
-        dirs[:] = [d for d in dirs if d not in IGNORE_DIRS]
+                    try:
+                        with open(file_path, "r", encoding="utf-8") as f:
+                            content = f.read()
 
-        for file in files:
-            if is_valid_file(file):
-                file_path = os.path.abspath(os.path.join(root, file))
+                        out.write(f"\n{'='*80}\n")
+                        out.write(f"FILE: {file_path}\n")
+                        out.write(f"{'='*80}\n\n")
+                        out.write(content)
+                        out.write("\n\n")
 
-                try:
-                    with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
-                        content = f.read()
+                    except Exception as e:
+                        out.write(f"\n[ERROR READING {file_path}: {e}]\n")
 
-                    # 🔥 STRONG HEADER (always at top of each file block)
-                    header = (
-                        "\n\n"
-                        + "=" * 100 + "\n"
-                        + f"FILE NAME : {file}\n"
-                        + f"FILE PATH : {file_path}\n"
-                        + "=" * 100 + "\n\n"
-                    )
-
-                    combined.append(header + content)
-
-                except Exception as e:
-                    print(f"Skipped {file_path}: {e}")
-
-    return "".join(combined)
-
+    print(f"\n✅ All code dumped into: {OUTPUT_FILE}")
 
 if __name__ == "__main__":
-    project_path = os.getcwd()
-
-    print("Collecting code from project...")
-    result = collect_code(project_path)
-
-    with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
-        f.write(result)
-
-    print(f"\n✅ Done! Output saved in: {OUTPUT_FILE}")
+    main()

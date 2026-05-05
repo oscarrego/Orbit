@@ -58,6 +58,7 @@ def handle_join(data):
     if old_room:
         leave_room(old_room)
 
+
     join_room(room)
     socket_to_room[sid] = room
 
