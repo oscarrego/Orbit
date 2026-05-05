@@ -223,3 +223,9 @@
   }
 }
 
+@media (max-width: 480px) {
+  .login-page {
+    align-items: flex-start;
+    padding-top: 30px;
+  }
+}
