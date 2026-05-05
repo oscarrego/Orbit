@@ -93,11 +93,20 @@ const NumericSphereBackground = ({ onAbsorb }) => {
         coreEnergy.current = 0;
         phaseRef.current = 'FLOW';
         timerRef.current = 0;
-      } else if (phaseRef.current === 'FLOW') {
-        if (vacuumParticles.current.length === 0) {
-          phaseRef.current = 'CORE_ANIMATION';
-          timerRef.current = 0;
-        }
+      } 
+      else if (phaseRef.current === 'FLOW') {
+
+  timerRef.current += dt; // IMPORTANT
+
+  if (timerRef.current > 3500) {
+    phaseRef.current = 'CORE_ANIMATION';
+    timerRef.current = 0;
+  }
+
+  // your particle update logic continues here...
+
+
+
       } else if (phaseRef.current === 'CORE_ANIMATION') {
         timerRef.current += dt;
         if (timerRef.current >= 700) {
@@ -235,7 +244,7 @@ const NumericSphereBackground = ({ onAbsorb }) => {
 
         ctx.save();
         ctx.globalAlpha = depthOpacity;
-        ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+        ctx.fillStyle = "rgb(255, 255, 255)";
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
 
@@ -256,33 +265,23 @@ const NumericSphereBackground = ({ onAbsorb }) => {
         ctx.restore();
       };
 
-      // Visible during FLOW as a small seed, then full animation
-      if (phaseRef.current === 'FLOW' && coreEnergy.current > 0) {
-        renderCore(ctx, centerX, centerY, 2, 0.5);
-      } 
-      else if (phaseRef.current === 'CORE_ANIMATION') {
+// ONLY core animation (no small dot phase)
+if (phaseRef.current === 'CORE_ANIMATION') {
   const DURATION = 700;
   const progress = Math.min(1, timerRef.current / DURATION);
 
-  const FORM_PHASE = 0.1;
-
   let animRadius;
 
-  if (progress < FORM_PHASE) {
-    // Big circle appears instantly
-    animRadius = 28;
-  } else {
-    // Smooth shrink
-    const collapseProgress = (progress - FORM_PHASE) / (1 - FORM_PHASE);
-    const ease = Math.pow(1 - collapseProgress, 1.8);
-    animRadius = 28 * ease;
-  }
+  // START immediately with big circle
+  const collapseProgress = progress;
+  const ease = Math.pow(1 - collapseProgress, 1.8);
+  animRadius = 28 * ease;
 
-  // Keep tiny dot at end
+  // keep tiny dot at end
   animRadius = Math.max(0.3, animRadius);
 
-  // No fade
-  const animOpacity = 1;
+  // slightly softer opacity (optional)
+  const animOpacity = 0.9;
 
   renderCore(ctx, centerX, centerY, animRadius, animOpacity);
 }
@@ -303,11 +302,11 @@ const NumericSphereBackground = ({ onAbsorb }) => {
     <canvas
       ref={canvasRef}
       style={{
-        width: '100%',
-        height: '100%',
+        width: '110%',
+        height: '110%',
         position: 'absolute',
-        top: 0,
-        left: 0,
+        top: -60,
+        left: -15,
         background: 'transparent'
       }}
     />
