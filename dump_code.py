@@ -14,6 +14,7 @@ INCLUDE_EXTENSIONS = (
 )
 
 
+
 # Folders to ignore
 IGNORE_DIRS = {"node_modules", ".git", "build", "dist", "__pycache__"}
 
