@@ -1,4 +1,4 @@
-from backend.app import app, socketio
+from app import app, socketio
 
 # This is required for Gunicorn to detect correctly
 application = app
