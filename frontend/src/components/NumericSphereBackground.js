@@ -144,19 +144,19 @@ const NumericSphereBackground = ({ onAbsorb }) => {
 
           const nx = dx / dist;
           const ny = dy / dist;
-          let pull = 0.05 + Math.max(0, 1 - dist / (radius + 80)) * 0.55; 
+          let pull = 0.05 + Math.max(0, 1 - dist / (radius + 80)) * 0.75; 
           
           p.vx += nx * pull * timeScale;
           p.vy += ny * pull * timeScale;
-          p.vx += -ny * 0.03 * timeScale;
-          p.vy += nx * 0.03 * timeScale;
+          p.vx += -ny * 0.05 * timeScale;
+          p.vy += nx * 0.05 * timeScale;
           
           const damping = Math.pow(0.98, timeScale);
           p.vx *= damping;
           p.vy *= damping;
           
-          p.x += p.vx * timeScale;
-          p.y += p.vy * timeScale;
+          p.x += p.vx * timeScale * 1.3;
+          p.y += p.vy * timeScale * 1.3;
 
           let normDist = Math.min(dist / (radius + 80), 1);
           const targetOpacity = 0.1 + (1 - normDist) * 0.5;
@@ -171,7 +171,7 @@ const NumericSphereBackground = ({ onAbsorb }) => {
 
       // --- SPHERE ROTATION ---
       // Achieve a smooth, continuous diagonal rotation (bottom-right to top-left flow)
-      rotation.current.angle = (rotation.current.angle || 0) - (0.006 * timeScale);
+      rotation.current.angle = (rotation.current.angle || 0) - (0.010 * timeScale);
       const t = rotation.current.angle;
 
       // 1. Continuous spin around Y axis
