@@ -63,21 +63,26 @@ def handle_join(data):
     # ---------------------------
     if is_private:
 
-        # Room exists
         if room in private_rooms:
-
-            # Wrong password
+            # Room exists — verify passcode
             if private_rooms[room]["passcode"] != passcode:
-                emit("room_error", {
-                    "message": "Wrong passcode"
-                })
+                emit("room_error", {"message": "Invalid room passcode"})
                 return
+            # Passcode matches — allow joining (fall through)
 
-        # Create new room
         else:
-            private_rooms[room] = {
-                "passcode": passcode
-            }
+            # Room does not exist yet — create it with this passcode
+            if not passcode:
+                emit("room_error", {"message": "Passcode is required to create a private room"})
+                return
+            private_rooms[room] = {"passcode": passcode}
+            print(f"Private room '{room}' created.")
+
+    else:
+        # Public room: if name collides with an existing private room, block it
+        if room in private_rooms:
+            emit("room_error", {"message": "That room is private. Use a passcode to join."})
+            return
 
     # ---------------------------
     # LEAVE OLD ROOM

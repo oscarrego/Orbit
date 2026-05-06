@@ -114,6 +114,25 @@ function App() {
       );
     });
 
+    // 🔒 ROOM ERROR (wrong passcode, private collision, etc.)
+    socket.on("room_error", ({ message }) => {
+      console.warn("🔒 ROOM ERROR:", message);
+      // Roll back to Global
+      const rolledBack = "Global";
+      setCurrentRoom(rolledBack);
+      localStorage.setItem("roomId", rolledBack);
+      setIsRoomPrivate(false);
+      setChatMessages([]);
+      socket.emit("join_room", { room: rolledBack });
+      showToast({ message, type: "error" });
+    });
+
+    // ✅ ROOM JOINED CONFIRMATION
+    socket.on("room_joined", ({ room }) => {
+      console.log("✅ Joined room:", room);
+      showToast({ message: `Joined room: ${room}`, type: "room" });
+    });
+
     return () => {
       socket.off("update_users");
       socket.off("load_messages");
@@ -121,6 +140,8 @@ function App() {
       socket.off("message_updated");
       socket.off("sos_alert");
       socket.off("sos_cancel");
+      socket.off("room_error");
+      socket.off("room_joined");
     };
   }, [user.username]);
 
@@ -236,38 +257,32 @@ showToast({
   type: "success"
 });
 };
-  //  Switch Room
   const handleSwitchRoom = () => {
     const room = roomInput.trim();
     if (!room || room === currentRoom) return;
-    setChatMessages([]); // 🔥 ADD THIS LINE
+    setChatMessages([]);
 
     setCurrentRoom(room);
     setIsRoomPrivate(false);
     localStorage.setItem("roomId", room);
     socket.emit("join_room", { room });
     setRoomInput("");
-    showToast({
-  message: `Joined room: ${room}`,
-  type: "room"
-});
 };
 
   const handleCreateRoom = (roomData) => {
+    // Close modal immediately; we'll confirm success/failure via socket events
+    setShowCreateRoomModal(false);
+
+    socket.emit("join_room", {
+      room: roomData.name,
+      isPrivate: roomData.isPrivate,
+      passcode: roomData.passcode   // ← must match backend key
+    });
+    // Optimistic UI update — room_error will roll this back if denied
     setChatMessages([]);
     setCurrentRoom(roomData.name);
     setIsRoomPrivate(roomData.isPrivate);
     localStorage.setItem("roomId", roomData.name);
-    socket.emit("join_room", { 
-      room: roomData.name, 
-      isPrivate: roomData.isPrivate, 
-      password: roomData.password 
-    });
-    setShowCreateRoomModal(false);
-    showToast({
-      message: `Created room: ${roomData.name}`,
-      type: "room"
-    });
   };
 
   // 💬 Handle Send Message
