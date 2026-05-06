@@ -1001,6 +1001,7 @@ showToast({
           onClose={() => setShowProfile(false)} 
           onChangeAvatar={changeAvatar}
           onUpdateUsername={updateUsername}
+          onLogout={handleLogout}
         />
       )}
 

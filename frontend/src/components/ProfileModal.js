@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-const ProfileModal = ({ user, onClose, onChangeAvatar, onUpdateUsername }) => {
+const ProfileModal = ({ user, onClose, onChangeAvatar, onUpdateUsername, onLogout }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [tempName, setTempName] = useState(user.username);
   const roomId = localStorage.getItem("roomId") || "Global";
@@ -24,6 +24,13 @@ const ProfileModal = ({ user, onClose, onChangeAvatar, onUpdateUsername }) => {
     <div className="profile-overlay" onClick={onClose}>
       <div className="profile-modal" onClick={(e) => e.stopPropagation()}>
         
+        <button className="floating-logout-btn" onClick={onLogout} title="Logout">
+          <svg className="power-logout" viewBox="0 0 24 24" fill="none">
+            <path className="power-ring" d="M12 3V12" />
+            <path className="power-ring" d="M7 5.5A8 8 0 1 0 17 5.5" />
+          </svg>
+        </button>
+
         <div 
           className="profile-avatar clickable" 
           onClick={onChangeAvatar}
@@ -80,7 +87,12 @@ const ProfileModal = ({ user, onClose, onChangeAvatar, onUpdateUsername }) => {
           ACTIVE / VISIBLE
         </div>
 
-        <button className="close-btn" onClick={onClose}>Close</button>
+        <button className="close-btn" onClick={onClose}>
+            <path className="close-x-line" d="M8 8L16 16" />
+            <path className="close-x-line" d="M16 8L8 16" />
+          
+          Close
+        </button>
 
       </div>
     </div>
