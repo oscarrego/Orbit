@@ -322,6 +322,66 @@ def handle_join(data):
     print(f"{'='*55}\n")
 
 # --------------------------------------------------
+# REJOIN ROOM  (session restore after page refresh)
+#
+# No passcode required — the user was already
+# authenticated before the page was reloaded.
+# We only verify the room still exists in MongoDB.
+# Emits: room_joined | room_error
+# --------------------------------------------------
+@socketio.on("rejoin_room")
+def handle_rejoin(data):
+    print(f"\n{'='*55}")
+    print(f"🔄 rejoin_room: {data}")
+
+    room = (data.get("room") or "Global").strip()
+    sid  = request.sid
+
+    # Global is always allowed
+    if room == "Global":
+        old = socket_to_room.get(sid)
+        if old:
+            leave_room(old)
+        join_room(room)
+        socket_to_room[sid] = room
+        emit("room_joined", {"room": room})
+        print(f"   → rejoined Global")
+        print(f"{'='*55}\n")
+        return
+
+    # Verify the room still exists in MongoDB
+    existing = get_room(room)
+    if not existing:
+        print(f"   ❌ Room '{room}' no longer exists — falling back to Global")
+        emit("room_error", {"message": "Room no longer exists"})
+        return
+
+    # Room exists — rejoin the socket room
+    old = socket_to_room.get(sid)
+    if old:
+        leave_room(old)
+    join_room(room)
+    socket_to_room[sid] = room
+    print(f"👤 {sid} rejoined '{room}'")
+
+    # Load messages
+    cutoff   = time.time() - 86400
+    messages = list(
+        messages_collection.find(
+            {"room": room, "timestamp": {"$gt": cutoff}}
+        ).sort("timestamp", 1)
+    )
+    for msg in messages:
+        msg["_id"] = str(msg["_id"])
+        msg.pop("createdAt", None)
+        msg.setdefault("seenBy", [])
+        msg.setdefault("senderId", "unknown")
+
+    emit("load_messages", messages)
+    emit("room_joined", {"room": room})
+    print(f"{'='*55}\n")
+
+# --------------------------------------------------
 # CHECK ROOM
 # --------------------------------------------------
 @socketio.on("check_room")

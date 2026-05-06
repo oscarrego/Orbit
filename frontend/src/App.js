@@ -52,7 +52,7 @@ function App() {
   const [chatMessages, setChatMessages] = useState([]);
   const [msgInput, setMsgInput] = useState("");
   const [currentRoom, setCurrentRoom] = useState(localStorage.getItem("roomId") || "Global");
-  const [isRoomPrivate, setIsRoomPrivate] = useState(false);
+  const [isRoomPrivate, setIsRoomPrivate] = useState(localStorage.getItem("isRoomPrivate") === "true");
   const [roomInput, setRoomInput] = useState("");
   const chatEndRef = useRef(null);
   
@@ -67,9 +67,10 @@ function App() {
 
   // 🔌 Socket Listeners
   useEffect(() => {
-    // Initial join if logged in
+    // Initial join / rejoin if logged in
     if (user.username) {
-      socket.emit("join_room", { room: currentRoom });
+      // Use rejoin_room — backend verifies room still exists, no passcode needed
+      socket.emit("rejoin_room", { room: currentRoom });
     }
 
     socket.on("update_users", (data) => {
@@ -130,11 +131,12 @@ function App() {
         return;
       }
 
-      // Otherwise roll back to Global (e.g. create-room failure)
+      // Otherwise roll back to Global (e.g. create-room failure, deleted room)
       const rolledBack = "Global";
       setCurrentRoom(rolledBack);
       localStorage.setItem("roomId", rolledBack);
       setIsRoomPrivate(false);
+      localStorage.setItem("isRoomPrivate", "false");
       setChatMessages([]);
       socket.emit("join_room", { room: rolledBack });
       showToast({ message, type: "error" });
@@ -151,6 +153,7 @@ function App() {
       localStorage.setItem("roomId", room);
       setChatMessages([]);
       setIsRoomPrivate(wasPrivate);
+      localStorage.setItem("isRoomPrivate", String(wasPrivate));
 
       if (joinModalRef.current) {
         setJoinModal(null);
@@ -166,6 +169,7 @@ function App() {
       localStorage.setItem("roomId", room);
       setChatMessages([]);
       setIsRoomPrivate(true);
+      localStorage.setItem("isRoomPrivate", "true");
       showToast({ message: `Room “${room}” created!`, type: "room" });
     });
 
@@ -297,6 +301,7 @@ setUser((prev) => ({ ...prev, username: trimmed, avatarSeed: seed }));
     localStorage.removeItem("username");
     localStorage.removeItem("avatarSeed");
     localStorage.removeItem("roomId");
+    localStorage.removeItem("isRoomPrivate");
     window.location.reload();
   };
 
