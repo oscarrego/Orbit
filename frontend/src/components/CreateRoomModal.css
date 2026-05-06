@@ -5,10 +5,13 @@
 .modal-overlay {
   position: fixed;
   inset: 0;
+  width: 100vw;
+  height: 100dvh; /* Dynamic viewport height for keyboard safety */
   background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   z-index: 20001;
@@ -17,7 +20,18 @@
   overflow-y: auto;
 }
 
+/* Weighted spacers for dynamic "upper-half" positioning on mobile */
+.modal-overlay::before,
+.modal-overlay::after {
+  content: "";
+  display: block;
+  flex: 1;
+  min-height: 20px;
+  transition: flex 0.3s ease;
+}
+
 .create-room-modal {
+  flex-shrink: 0;
   width: min(340px, 100%); /* Fluid adaptive width */
   max-width: 100%;
   background: linear-gradient(180deg, rgba(45, 45, 50, 0.72), rgba(55, 55, 60, 0.65)); /* Smoky Gray Mica */
@@ -250,6 +264,10 @@
 
 /* ── Mobile & Keyboard Safety ───────────────────────── */
 @media (max-width: 480px) {
+  .modal-overlay::after {
+    flex: 2.5; /* Shift UP into top half */
+  }
+
   .create-room-modal {
     width: 92%;
     border-radius: 18px;
@@ -257,10 +275,9 @@
 }
 
 @media (max-height: 550px) {
-  .modal-overlay {
-    align-items: flex-start;
-    padding-top: 30px;
-    padding-bottom: 30px;
+  .modal-overlay::before {
+    flex: 0;
+    min-height: 10px;
   }
   .modal-header {
     margin-bottom: 14px;
