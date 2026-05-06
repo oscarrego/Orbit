@@ -164,6 +164,7 @@ onCreate({
   return (
     <div className="modal-overlay">
       <div className="create-room-modal">
+        {/* Header - Stacked and Centered */}
         <div className="modal-header">
           <div className="header-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -171,7 +172,10 @@ onCreate({
               <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
             </svg>
           </div>
-          <h2>Create Private Room</h2>
+          <div className="header-text">
+            <h2>Create Private Room</h2>
+            <p className="modal-subtitle">Secure, encrypted space</p>
+          </div>
         </div>
 
         <form onSubmit={handleCreate} noValidate>
