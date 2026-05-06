@@ -12,6 +12,7 @@ import './JoinRoomModal.css';
  */
 const JoinRoomModal = ({ roomName, onJoin, onCancel, error, loading }) => {
   const [otp, setOtp]           = useState(['', '', '', '']);
+  const [visibleIndex, setVisibleIndex] = useState(null);
   const [shake, setShake]       = useState(false);
   const otpRefs                 = useRef([]);
 
@@ -119,7 +120,13 @@ const JoinRoomModal = ({ roomName, onJoin, onCancel, error, loading }) => {
               inputMode="numeric"
               maxLength={1}
               className="jr-otp-box"
-              value={digit}
+              value={
+              visibleIndex === i
+                ? digit
+                : digit
+                  ? "•"
+                  : ""
+            }
               onChange={e => handleChange(i, e.target.value)}
               onKeyDown={e => handleKeyDown(i, e)}
               onPaste={handlePaste}

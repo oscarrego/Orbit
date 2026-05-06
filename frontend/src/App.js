@@ -362,7 +362,6 @@ showToast({
 
   const handleCreateRoom = (roomData) => {
     setShowCreateRoomModal(false);
-    console.log("🔒 Emitting create_room:", roomData.name, "passcode:", roomData.passcode);
     // Emit to the dedicated CREATE event — never join_room
     // Backend will reject with create_room_error if room already exists
     socket.emit("create_room", {

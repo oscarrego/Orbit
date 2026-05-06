@@ -4,6 +4,7 @@ import './CreateRoomModal.css';
 const CreateRoomModal = ({ onClose, onCreate }) => {
   const [roomName, setRoomName] = useState('');
   const [otp, setOtp] = useState(['', '', '', '']);
+  const [visibleIndex, setVisibleIndex] = useState(null);
   
   const [errors, setErrors] = useState({ roomName: '', passcode: '' });
   const [touched, setTouched] = useState({ roomName: false, passcode: false });
@@ -55,30 +56,52 @@ const CreateRoomModal = ({ onClose, onCreate }) => {
     setRoomName(filtered.slice(0, 8));
   };
 
-  const handleOtpChange = (index, value) => {
-    // Only allow numbers
-    const cleanValue = value.replace(/\D/g, '');
-    if (!cleanValue && value !== '') return;
+const handleOtpChange = (index, value) => {
+  // Only allow numbers
+  const cleanValue = value.replace(/\D/g, '');
+  if (!cleanValue && value !== '') return;
 
-    const newOtp = [...otp];
-    // If user typed/pasted more than 1 char in a box
-    if (cleanValue.length > 1) {
-      const chars = cleanValue.split('').slice(0, 4 - index);
-      chars.forEach((char, i) => {
-        if (index + i < 4) newOtp[index + i] = char;
-      });
-      setOtp(newOtp);
-      const nextFocus = Math.min(index + chars.length, 3);
-      otpRefs.current[nextFocus].focus();
-    } else {
-      newOtp[index] = cleanValue;
-      setOtp(newOtp);
-      if (cleanValue && index < 3) {
-        otpRefs.current[index + 1].focus();
+  const newOtp = [...otp];
+
+  // If user typed/pasted more than 1 char in a box
+  if (cleanValue.length > 1) {
+    const chars = cleanValue.split('').slice(0, 4 - index);
+
+    chars.forEach((char, i) => {
+      if (index + i < 4) {
+        newOtp[index + i] = char;
+
+        // briefly reveal typed digit
+        setVisibleIndex(index + i);
+
+        setTimeout(() => {
+          setVisibleIndex(null);
+        }, 400);
       }
-    }
-  };
+    });
 
+    setOtp(newOtp);
+
+    const nextFocus = Math.min(index + chars.length, 3);
+    otpRefs.current[nextFocus].focus();
+
+  } else {
+
+    newOtp[index] = cleanValue;
+    setOtp(newOtp);
+
+    // briefly show typed digit
+    setVisibleIndex(index);
+
+    setTimeout(() => {
+      setVisibleIndex(null);
+    }, 400);
+
+    if (cleanValue && index < 3) {
+      otpRefs.current[index + 1].focus();
+    }
+  }
+};
   const handleKeyDown = (index, e) => {
     if (e.key === 'Backspace') {
       if (!otp[index] && index > 0) {
@@ -181,7 +204,13 @@ onCreate({
                   type="text"
                   inputMode="numeric"
                   className="otp-box"
-                  value={digit}
+                  value={
+  visibleIndex === index
+    ? digit
+    : digit
+      ? "•"
+      : ""
+}
                   onChange={e => handleOtpChange(index, e.target.value)}
                   onKeyDown={e => handleKeyDown(index, e)}
                   onPaste={handlePaste}
