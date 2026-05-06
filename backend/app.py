@@ -95,6 +95,8 @@ socketio = SocketIO(
 )
 
 
+
+
 # --------------------------------------------------
 # In-memory session state  (ephemeral — NOT for auth)
 # --------------------------------------------------
