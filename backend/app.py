@@ -12,6 +12,8 @@ from pymongo import MongoClient, ASCENDING
 from pymongo.errors import DuplicateKeyError
 from datetime import datetime
 
+
+
 # --------------------------------------------------
 # DATABASE
 # --------------------------------------------------
