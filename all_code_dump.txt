@@ -19,7 +19,6 @@ INCLUDE_EXTENSIONS = (
 )
 
 
-
 # Folders to ignore
 IGNORE_DIRS = {"node_modules", ".git", "build", "dist", "__pycache__"}
 
@@ -18446,7 +18445,14 @@ backdrop-filter: none;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
+}
+
+.header-text-container {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow: hidden;
 }
 
 .chat-header span {
@@ -18455,55 +18461,100 @@ backdrop-filter: none;
   letter-spacing: 0.8px;
   color: #9ca3af;
   text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.active-room-name {
+  color: white !important;
+  animation: headerFadeIn 0.4s ease-out;
+}
+
+.header-lock-icon {
+  margin-left: 6px;
+  color: #fbbf24;
+  filter: drop-shadow(0 0 5px rgba(251, 191, 36, 0.4));
+  animation: lockPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes headerFadeIn {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes lockPop {
+  0% { transform: scale(0); }
+  100% { transform: scale(1); }
 }
 
 /* 🏠 Room Join/Create Controls */
 .room-controls {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 16px;
+  padding: 14px 16px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.join-row {
+  display: flex;
+  gap: 8px;
+  width: 100%;
 }
 
 .room-input {
   flex: 1;
   background: rgba(255, 255, 255, 0.05) !important;
   border: 1px solid rgba(255, 255, 255, 0.1) !important;
-  border-radius: 20px !important;
-  padding: 10px 18px !important;
+  border-radius: 10px !important;
+  padding: 8px 14px !important;
   font-size: 13px !important;
   font-weight: 500;
   color: white;
   outline: none;
-  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.05);
+  transition: all 0.2s;
 }
 
-.room-input::placeholder {
-  color: rgba(255, 255, 255, 0.4);
+.room-input:focus {
+  border-color: rgba(59, 130, 246, 0.4) !important;
+  background: rgba(255, 255, 255, 0.08) !important;
 }
 
 .join-btn {
+  width: 64px;
   background: #3b82f6;
   color: white;
   border: none;
-  border-radius: 12px;
-  padding: 0 16px;
+  border-radius: 10px;
   font-size: 11px;
   font-weight: 800;
+  letter-spacing: 0.5px;
   cursor: pointer;
   transition: all 0.2s;
-  height: 36px;
-  letter-spacing: 0.8px;
 }
 
 .join-btn:hover {
   background: #60a5fa;
-  transform: translateY(-1px);
+  box-shadow: 0 0 15px rgba(59, 130, 246, 0.3);
 }
 
-.join-btn:active {
-  transform: translateY(0);
+.create-room-trigger {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 0;
+  width: fit-content;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.create-room-trigger:hover {
+  color: #3b82f6;
+  transform: translateX(2px);
 }
 
 .chat-messages {
@@ -19191,22 +19242,29 @@ body.light-mode::before {
     height: 34px;
   }
 
-  /* Fix Join Button (Clipping Issue) */
+  /* Fix Room Controls (Mobile) */
   .room-controls {
-    display: flex;
-    gap: 8px;
-    align-items: center;
+    flex-direction: column;
+    gap: 10px;
+    padding: 14px;
   }
 
-  .room-input {
-    flex: 1;
-    min-width: 0;
+  .join-row {
+    width: 100%;
+    gap: 6px;
   }
 
-  .join-btn {
-    flex-shrink: 0;
-    padding: 0 12px;
-    height: 34px;
+  /* Stack input and join on extremely narrow screens */
+  @media (max-width: 340px) {
+    .join-row {
+      flex-direction: column;
+    }
+    .join-btn {
+      width: 100%;
+    }
+    .chat-panel {
+      width: 85%;
+    }
   }
 
   /* Control Cluster - Hidden on Mobile */
@@ -19465,6 +19523,7 @@ import MapView from "./components/MapView";
 import Login from "./components/Login";
 import ProfileModal from "./components/ProfileModal";
 import OrbitEasterEgg from "./components/OrbitEasterEgg";
+import CreateRoomModal from "./components/CreateRoomModal";
 import socket from "./components/SocketManager";
 import "./App.css";
 
@@ -19499,6 +19558,7 @@ function App() {
   const [fabOpen, setFabOpen] = useState(false);
   const [activePanel, setActivePanel] = useState(null); // 'chat', 'users', or null
   const [showProfile, setShowProfile] = useState(false);
+  const [showCreateRoomModal, setShowCreateRoomModal] = useState(false);
   const [showEasterEgg, setShowEasterEgg] = useState(false);
   const [is3DView, setIs3DView] = useState(false);
   
@@ -19506,6 +19566,7 @@ function App() {
   const [chatMessages, setChatMessages] = useState([]);
   const [msgInput, setMsgInput] = useState("");
   const [currentRoom, setCurrentRoom] = useState(localStorage.getItem("roomId") || "Global");
+  const [isRoomPrivate, setIsRoomPrivate] = useState(false);
   const [roomInput, setRoomInput] = useState("");
   const chatEndRef = useRef(null);
   
@@ -19702,6 +19763,7 @@ showToast({
     setChatMessages([]); // 🔥 ADD THIS LINE
 
     setCurrentRoom(room);
+    setIsRoomPrivate(false);
     localStorage.setItem("roomId", room);
     socket.emit("join_room", { room });
     setRoomInput("");
@@ -19710,6 +19772,23 @@ showToast({
   type: "room"
 });
 };
+
+  const handleCreateRoom = (roomData) => {
+    setChatMessages([]);
+    setCurrentRoom(roomData.name);
+    setIsRoomPrivate(roomData.isPrivate);
+    localStorage.setItem("roomId", roomData.name);
+    socket.emit("join_room", { 
+      room: roomData.name, 
+      isPrivate: roomData.isPrivate, 
+      password: roomData.password 
+    });
+    setShowCreateRoomModal(false);
+    showToast({
+      message: `Created room: ${roomData.name}`,
+      type: "room"
+    });
+  };
 
   // 💬 Handle Send Message
   const sendMessage = (e) => {
@@ -19874,19 +19953,33 @@ showToast({
       <div className={`chat-panel ${activePanel === "chat" ? "open" : "closed"}`}>
         <div className="chat-header">
           <div className="online-dot"></div>
-          <span>ORBIT CHAT - ROOM: {currentRoom.toUpperCase()}</span>
+          <div className="header-text-container">
+            <span>ORBIT CHAT - </span>
+            <span className="active-room-name">{currentRoom.toUpperCase()}</span>
+            {isRoomPrivate && (
+              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" className="header-lock-icon">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+              </svg>
+            )}
+          </div>
         </div>
 
         <div className="room-controls">
-          <input 
-            type="text" 
-            className="room-input" 
-            placeholder="Join or Create Room..." 
-            value={roomInput}
-            onChange={(e) => setRoomInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSwitchRoom()}
-          />
-          <button className="join-btn" onClick={handleSwitchRoom}>JOIN</button>
+          <div className="join-row">
+            <input 
+              type="text" 
+              className="room-input" 
+              placeholder="Enter Room ID..." 
+              value={roomInput}
+              onChange={(e) => setRoomInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSwitchRoom()}
+            />
+            <button className="join-btn" onClick={handleSwitchRoom}>JOIN</button>
+          </div>
+          <button className="create-room-trigger" onClick={() => setShowCreateRoomModal(true)}>
+            + Create Private Room
+          </button>
         </div>
         
         <div className="chat-messages">
@@ -20323,6 +20416,13 @@ showToast({
           onClose={() => setShowProfile(false)} 
           onChangeAvatar={changeAvatar}
           onUpdateUsername={updateUsername}
+        />
+      )}
+
+      {showCreateRoomModal && (
+        <CreateRoomModal 
+          onClose={() => setShowCreateRoomModal(false)} 
+          onCreate={handleCreateRoom}
         />
       )}
 
@@ -20797,6 +20897,467 @@ root.render(
   </React.StrictMode>
 );
 
+
+
+
+================================================================================
+FILE: .\frontend\src\components\CreateRoomModal.css
+================================================================================
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20001;
+  animation: modalFadeIn 0.3s ease-out;
+}
+
+.create-room-modal {
+  width: 320px;
+  max-width: 90%;
+  background: rgba(15, 15, 15, 0.7);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: 
+    0 30px 60px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 0 40px rgba(255, 255, 255, 0.02);
+  color: white;
+  animation: modalSlideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.header-icon {
+  width: 36px;
+  height: 36px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.05);
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.input-group {
+  margin-bottom: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: relative;
+}
+
+.input-group label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: rgba(255, 255, 255, 0.35);
+  padding-left: 2px;
+}
+
+.input-group input:not(.otp-box) {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 10px 14px;
+  color: white;
+  font-size: 13px;
+  outline: none;
+  transition: all 0.2s ease;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.input-group input:not(.otp-box):focus {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(59, 130, 246, 0.4);
+  box-shadow: 0 0 15px rgba(59, 130, 246, 0.1);
+}
+
+/* OTP PIN Styling */
+.otp-container {
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  margin-top: 2px;
+}
+
+.otp-box {
+  flex: 1;
+  height: 48px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  color: white;
+  font-size: 18px;
+  font-weight: 600;
+  text-align: center;
+  outline: none;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.otp-box:focus {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(59, 130, 246, 0.5);
+  box-shadow: 0 0 15px rgba(59, 130, 246, 0.15);
+  transform: translateY(-2px);
+}
+
+.input-group.has-error .otp-box {
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+.input-group.has-error .otp-box:focus {
+  border-color: #ef4444;
+  box-shadow: 0 0 15px rgba(239, 68, 68, 0.2);
+}
+
+/* Error States */
+.input-group.has-error input:not(.otp-box),
+.input-group.excess-error input:not(.otp-box) {
+  border-color: rgba(239, 68, 68, 0.4);
+  background: rgba(239, 68, 68, 0.03);
+}
+
+.input-group.has-error input:not(.otp-box):focus,
+.input-group.excess-error input:not(.otp-box):focus {
+  border-color: #ef4444;
+}
+
+.error-text {
+  font-size: 10px;
+  color: #f87171;
+  font-weight: 500;
+  padding-left: 2px;
+  margin-top: 4px;
+  opacity: 0.8;
+  animation: errorFadeIn 0.2s ease-out forwards;
+}
+
+@keyframes errorFadeIn {
+  from { opacity: 0; transform: translateY(-2px); }
+  to { opacity: 0.8; transform: translateY(0); }
+}
+
+.shake {
+  animation: shakeSubtle 0.4s cubic-bezier(.36,.07,.19,.97) both;
+}
+
+@keyframes shakeSubtle {
+  10%, 90% { transform: translate3d(-1px, 0, 0); }
+  20%, 80% { transform: translate3d(2px, 0, 0); }
+  30%, 50%, 70% { transform: translate3d(-3px, 0, 0); }
+  40%, 60% { transform: translate3d(3px, 0, 0); }
+}
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 28px;
+}
+
+.cancel-btn, .create-btn {
+  flex: 1;
+  padding: 11px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.cancel-btn {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.cancel-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.create-btn {
+  background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: white;
+  box-shadow: 
+    0 4px 12px rgba(37, 99, 235, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.create-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 
+    0 6px 16px rgba(37, 99, 235, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  filter: brightness(1.1);
+}
+
+.create-btn:active {
+  transform: translateY(0);
+}
+
+.create-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  filter: grayscale(0.5);
+  box-shadow: none;
+}
+
+@keyframes modalFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modalSlideUp {
+  from { opacity: 0; transform: translateY(15px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+
+
+================================================================================
+FILE: .\frontend\src\components\CreateRoomModal.js
+================================================================================
+
+import React, { useState, useRef, useEffect } from 'react';
+import './CreateRoomModal.css';
+
+const CreateRoomModal = ({ onClose, onCreate }) => {
+  const [roomName, setRoomName] = useState('');
+  const [otp, setOtp] = useState(['', '', '', '']);
+  
+  const [errors, setErrors] = useState({ roomName: '', passcode: '' });
+  const [touched, setTouched] = useState({ roomName: false, passcode: false });
+  const [shakeField, setShakeField] = useState(null); // 'roomName' or 'passcode'
+  const [maxCharError, setMaxCharError] = useState(false);
+
+  const roomNameRef = useRef(null);
+  const otpRefs = useRef([]);
+
+  // Alphanumeric, 4-8 chars
+  const validateRoomName = (value) => {
+    if (!value) return "Room name is required";
+    if (value.length < 4) return "Room name must be at least 4 characters";
+    if (value.length > 8) return "Maximum 8 characters allowed";
+    if (!/^[A-Za-z0-9]+$/.test(value)) return "Only letters and numbers allowed";
+    return "";
+  };
+
+  // Exactly 4 digits
+  const validatePasscode = (value) => {
+    if (!value || value.length < 4) return "Passcode must be exactly 4 digits";
+    if (!/^\d{4}$/.test(value)) return "Passcode must be numeric only";
+    return "";
+  };
+
+  useEffect(() => {
+    if (touched.roomName) {
+      setErrors(prev => ({ ...prev, roomName: validateRoomName(roomName) }));
+    }
+  }, [roomName, touched.roomName]);
+
+  useEffect(() => {
+    const passcode = otp.join('');
+    if (touched.passcode) {
+      setErrors(prev => ({ ...prev, passcode: validatePasscode(passcode) }));
+    }
+  }, [otp, touched.passcode]);
+
+  const handleRoomNameChange = (e) => {
+    const val = e.target.value;
+    const filtered = val.replace(/[^A-Za-z0-9]/g, '');
+    
+    if (val.length > 8) {
+      triggerShake('roomName');
+      setMaxCharError(true);
+      setTimeout(() => setMaxCharError(false), 2000);
+    }
+    
+    setRoomName(filtered.slice(0, 8));
+  };
+
+  const handleOtpChange = (index, value) => {
+    // Only allow numbers
+    const cleanValue = value.replace(/\D/g, '');
+    if (!cleanValue && value !== '') return;
+
+    const newOtp = [...otp];
+    // If user typed/pasted more than 1 char in a box
+    if (cleanValue.length > 1) {
+      const chars = cleanValue.split('').slice(0, 4 - index);
+      chars.forEach((char, i) => {
+        if (index + i < 4) newOtp[index + i] = char;
+      });
+      setOtp(newOtp);
+      const nextFocus = Math.min(index + chars.length, 3);
+      otpRefs.current[nextFocus].focus();
+    } else {
+      newOtp[index] = cleanValue;
+      setOtp(newOtp);
+      if (cleanValue && index < 3) {
+        otpRefs.current[index + 1].focus();
+      }
+    }
+  };
+
+  const handleKeyDown = (index, e) => {
+    if (e.key === 'Backspace') {
+      if (!otp[index] && index > 0) {
+        otpRefs.current[index - 1].focus();
+      }
+    } else if (e.key === 'ArrowLeft' && index > 0) {
+      otpRefs.current[index - 1].focus();
+    } else if (e.key === 'ArrowRight' && index < 3) {
+      otpRefs.current[index + 1].focus();
+    }
+  };
+
+  const handlePaste = (e) => {
+    e.preventDefault();
+    const data = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 4);
+    if (!data) return;
+
+    const newOtp = [...otp];
+    data.split('').forEach((char, i) => {
+      newOtp[i] = char;
+    });
+    setOtp(newOtp);
+    const nextFocus = Math.min(data.length, 3);
+    otpRefs.current[nextFocus].focus();
+  };
+
+  const triggerShake = (field) => {
+    setShakeField(field);
+    setTimeout(() => setShakeField(null), 500);
+  };
+
+  const handleCreate = (e) => {
+    e.preventDefault();
+    
+    const passcode = otp.join('');
+    const roomErr = validateRoomName(roomName);
+    const passErr = validatePasscode(passcode);
+
+    if (roomErr || passErr) {
+      setErrors({ roomName: roomErr, passcode: passErr });
+      setTouched({ roomName: true, passcode: true });
+      
+      if (roomErr) {
+        triggerShake('roomName');
+        roomNameRef.current?.focus();
+      } else if (passErr) {
+        triggerShake('passcode');
+        otpRefs.current[passcode.length < 4 ? passcode.length : 3].focus();
+      }
+      return;
+    }
+
+    onCreate({ 
+      name: roomName.trim(), 
+      isPrivate: true, 
+      password: passcode
+    });
+  };
+
+  return (
+    <div className="modal-overlay">
+      <div className="create-room-modal">
+        <div className="modal-header">
+          <div className="header-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+          </div>
+          <h2>Create Private Room</h2>
+        </div>
+
+        <form onSubmit={handleCreate} noValidate>
+          <div className={`input-group ${errors.roomName && touched.roomName ? 'has-error' : ''} ${shakeField === 'roomName' ? 'shake' : ''} ${maxCharError ? 'excess-error' : ''}`}>
+            <label>Room Name</label>
+            <input 
+              ref={roomNameRef}
+              type="text" 
+              placeholder="e.g. Secret" 
+              value={roomName}
+              onChange={handleRoomNameChange}
+              onBlur={() => setTouched(prev => ({ ...prev, roomName: true }))}
+              autoFocus
+              autoComplete="off"
+            />
+            {(errors.roomName && touched.roomName) || maxCharError ? (
+              <span className="error-text">
+                {maxCharError ? "Maximum 8 characters allowed" : errors.roomName}
+              </span>
+            ) : null}
+          </div>
+
+          <div className={`input-group ${errors.passcode && touched.passcode ? 'has-error' : ''} ${shakeField === 'passcode' ? 'shake' : ''}`}>
+            <label>Passcode</label>
+            <div className="otp-container">
+              {otp.map((digit, index) => (
+                <input
+                  key={index}
+                  ref={el => otpRefs.current[index] = el}
+                  type="text"
+                  inputMode="numeric"
+                  className="otp-box"
+                  value={digit}
+                  onChange={e => handleOtpChange(index, e.target.value)}
+                  onKeyDown={e => handleKeyDown(index, e)}
+                  onPaste={handlePaste}
+                  onBlur={() => {
+                    if (index === 3) setTouched(prev => ({ ...prev, passcode: true }));
+                  }}
+                  autoComplete="off"
+                />
+              ))}
+            </div>
+            {errors.passcode && touched.passcode && <span className="error-text">{errors.passcode}</span>}
+          </div>
+
+          <div className="modal-actions">
+            <button type="button" className="cancel-btn" onClick={onClose}>Cancel</button>
+            <button type="submit" className="create-btn">
+              Create
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+export default CreateRoomModal;
 
 
 
@@ -21729,6 +22290,7 @@ const NumericSphereBackground = ({ onAbsorb }) => {
   const vacuumParticles = useRef([]);
   const coreEnergy = useRef(0);
   const rotation = useRef({ x: 0, y: 0 });
+  
   
   // Cinematic Loop State Machine
   const phaseRef = useRef('WAIT');

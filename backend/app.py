@@ -32,6 +32,7 @@ socketio = SocketIO(
 )
 
 # In-memory store
+private_rooms = {}
 users = {} # user_id -> user data
 socket_to_user = {} # sid -> user_id
 socket_to_room = {} # sid -> current room
@@ -49,22 +50,57 @@ def connect():
 # ---------------------------
 @socketio.on("join_room")
 def handle_join(data):
+    print("ROOM DATA:", data)
+
     room = data.get("room", "Global")
+    passcode = data.get("passcode")
+    is_private = data.get("isPrivate", False)
+
     sid = request.sid
 
-    # Leave old room
+    # ---------------------------
+    # PRIVATE ROOM VALIDATION
+    # ---------------------------
+    if is_private:
+
+        # Room exists
+        if room in private_rooms:
+
+            # Wrong password
+            if private_rooms[room]["passcode"] != passcode:
+                emit("room_error", {
+                    "message": "Wrong passcode"
+                })
+                return
+
+        # Create new room
+        else:
+            private_rooms[room] = {
+                "passcode": passcode
+            }
+
+    # ---------------------------
+    # LEAVE OLD ROOM
+    # ---------------------------
     old_room = socket_to_room.get(sid)
+
     if old_room:
         leave_room(old_room)
 
-
+    # ---------------------------
+    # JOIN ROOM
+    # ---------------------------
     join_room(room)
+
     socket_to_room[sid] = room
 
     print(f"Client {sid} joined room: {room}")
 
-    # 🔥 LOAD OLD MESSAGES FROM MONGO (Only from last 24 hours)
+    # ---------------------------
+    # LOAD OLD MESSAGES
+    # ---------------------------
     cutoff = time.time() - 86400
+
     messages = list(
         messages_collection.find({
             "room": room,
@@ -73,15 +109,24 @@ def handle_join(data):
     )
 
     for msg in messages:
+
         msg["_id"] = str(msg["_id"])
+
         if "createdAt" in msg:
-            msg.pop("createdAt") # Remove datetime object before emitting JSON
+            msg.pop("createdAt")
+
         if "seenBy" not in msg:
             msg["seenBy"] = []
+
         if "senderId" not in msg:
             msg["senderId"] = "unknown"
 
     emit("load_messages", messages)
+
+    # Optional success event
+    emit("room_joined", {
+        "room": room
+    })
 # ---------------------------
 # DISCONNECT
 # ---------------------------

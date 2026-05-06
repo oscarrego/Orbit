@@ -131,12 +131,12 @@ const CreateRoomModal = ({ onClose, onCreate }) => {
       return;
     }
 
-    onCreate({ 
-      name: roomName.trim(), 
-      isPrivate: true, 
-      password: passcode
-    });
-  };
+onCreate({ 
+  name: roomName.trim(), 
+  isPrivate: true, 
+  passcode: passcode
+});
+  }
 
   return (
     <div className="modal-overlay">
