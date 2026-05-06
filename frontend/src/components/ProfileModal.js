@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-const ProfileModal = ({ user, onClose, onChangeAvatar, onUpdateUsername, onLogout }) => {
+const ProfileModal = ({ user, onClose, onChangeAvatar, onUpdateUsername, onLogout, isInvisible, onToggleInvisible }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [tempName, setTempName] = useState(user.username);
   const roomId = localStorage.getItem("roomId") || "Global";
@@ -74,7 +74,11 @@ const ProfileModal = ({ user, onClose, onChangeAvatar, onUpdateUsername, onLogou
 
         <div className="profile-toggle">
           <span>Invisible Mode</span>
-          <input type="checkbox" />
+          <input 
+            type="checkbox" 
+            checked={isInvisible} 
+            onChange={(e) => onToggleInvisible(e.target.checked)} 
+          />
         </div>
 
         <div className="profile-toggle">
@@ -82,9 +86,15 @@ const ProfileModal = ({ user, onClose, onChangeAvatar, onUpdateUsername, onLogou
           <input type="checkbox" defaultChecked />
         </div>
 
-        <div className="status">
-          <span className="dot"></span>
-          ACTIVE / VISIBLE
+        <div className="status" style={isInvisible ? { color: '#6b7280' } : undefined}>
+          <span 
+            className="dot" 
+            style={isInvisible ? { 
+              background: '#6b7280', 
+              boxShadow: '0 0 10px #6b7280' 
+            } : undefined} 
+          ></span>
+          {isInvisible ? 'OFFLINE / INVISIBLE' : 'ACTIVE / VISIBLE'}
         </div>
 
         <button className="close-btn" onClick={onClose}>
@@ -100,3 +110,4 @@ const ProfileModal = ({ user, onClose, onChangeAvatar, onUpdateUsername, onLogou
 };
 
 export default ProfileModal;
+

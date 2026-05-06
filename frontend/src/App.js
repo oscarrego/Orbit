@@ -42,6 +42,7 @@ function App() {
   const [showCreateRoomModal, setShowCreateRoomModal] = useState(false);
   const [showEasterEgg, setShowEasterEgg] = useState(false);
   const [is3DView, setIs3DView] = useState(false);
+  const [isInvisible, setIsInvisible] = useState(() => localStorage.getItem("invisibleMode") === "true");
 
   // 🔑 Join-room passcode modal state
   const [joinModal, setJoinModal] = useState(null);  // null | { roomName, loading, error }
@@ -79,6 +80,12 @@ function App() {
         unique[u.id] = u;
       });
       setUsers(Object.values(unique));
+    });
+
+    // 👻 INVISIBLE MODE CONFIRMED
+    socket.on("invisible_confirmed", ({ invisible }) => {
+      setIsInvisible(invisible);
+      localStorage.setItem("invisibleMode", String(invisible));
     });
 
     socket.on("sos_alert", (data) => {
@@ -213,6 +220,7 @@ function App() {
       socket.off("room_created");
       socket.off("create_room_error");
       socket.off("check_room_result");
+      socket.off("invisible_confirmed");
     };
 
   }, [user.username]);
@@ -269,6 +277,25 @@ function App() {
     return () => navigator.geolocation.clearWatch(watchId);
   }, [user.username, user.userId, user.avatarSeed]);
 
+  // 👻 Restore invisible state on reconnect
+  useEffect(() => {
+    const handleReconnect = () => {
+      const savedInvisible = localStorage.getItem("invisibleMode") === "true";
+      if (savedInvisible && user.userId) {
+        socket.emit("set_invisible", { userId: user.userId, invisible: true });
+      }
+    };
+    socket.on("connect", handleReconnect);
+    return () => socket.off("connect", handleReconnect);
+  }, [user.userId]);
+
+  // 👻 Sync invisible state on initial load
+  useEffect(() => {
+    if (user.username && isInvisible && user.userId) {
+      socket.emit("set_invisible", { userId: user.userId, invisible: true });
+    }
+  }, [user.username]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // 🔑 Handle Login
   const handleLogin = (username, roomId) => {
     const trimmed = username.trim();
@@ -302,6 +329,7 @@ setUser((prev) => ({ ...prev, username: trimmed, avatarSeed: seed }));
     localStorage.removeItem("avatarSeed");
     localStorage.removeItem("roomId");
     localStorage.removeItem("isRoomPrivate");
+    localStorage.removeItem("invisibleMode");
     window.location.reload();
   };
 
@@ -335,6 +363,17 @@ showToast({
   type: "success"
 });
 };
+
+  // 👻 Handle Invisible Mode Toggle
+  const handleToggleInvisible = (newValue) => {
+    setIsInvisible(newValue);
+    localStorage.setItem("invisibleMode", String(newValue));
+    socket.emit("set_invisible", { userId: user.userId, invisible: newValue });
+    showToast({
+      message: newValue ? "You are now invisible" : "You are now visible",
+      type: newValue ? "cancel" : "success"
+    });
+  };
   // Directly join a public room (no passcode required)
   const doJoinPublic = useCallback((room) => {
     pendingJoinRef.current = { isPrivate: false };
@@ -644,21 +683,28 @@ showToast({
       </button>
 
       {/* 👥 ACTIVE USERS INDICATOR */}
-      <div 
-        className="users-indicator" 
-        onClick={() => setActivePanel(prev => (prev === "users" ? null : "users"))}
-      >
-        <div className="online-dot"></div>
-        <span>Active Users: {users.length}</span>
-      </div>
+      {(() => {
+        const visibleUsers = isInvisible ? users.filter(u => u.id !== user.userId) : users;
+        return (
+          <div 
+            className="users-indicator" 
+            onClick={() => setActivePanel(prev => (prev === "users" ? null : "users"))}
+          >
+            <div className="online-dot"></div>
+            <span>Active Users: {visibleUsers.length}</span>
+          </div>
+        );
+      })()}
 
       {/* 👥 USERS PANEL */}
-      {activePanel === "users" && (
+      {activePanel === "users" && (() => {
+        const visibleUsers = isInvisible ? users.filter(u => u.id !== user.userId) : users;
+        return (
         <div className="users-panel">
           <h3>Nearby Users</h3>
           <div className="user-list">
-            {users.length > 0 ? (
-              [...users]
+            {visibleUsers.length > 0 ? (
+              [...visibleUsers]
                 .sort((a, b) => (a.id === user.userId ? -1 : b.id === user.userId ? 1 : 0))
                 .map((u, i) => {
                   let distance = "Calculating...";
@@ -692,7 +738,7 @@ showToast({
                           </span>
                         </div>
                       </div>
-                      {u.id === user.userId && users.length > 1 && (
+                      {u.id === user.userId && visibleUsers.length > 1 && (
                         <div className="user-divider"></div>
                       )}
                     </div>
@@ -703,7 +749,8 @@ showToast({
             )}
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* 📱 MOBILE FAB */}
       <div className={`fab-container ${fabOpen ? "open" : ""}`}>
@@ -1002,6 +1049,8 @@ showToast({
           onChangeAvatar={changeAvatar}
           onUpdateUsername={updateUsername}
           onLogout={handleLogout}
+          isInvisible={isInvisible}
+          onToggleInvisible={handleToggleInvisible}
         />
       )}
 

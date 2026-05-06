@@ -105,6 +105,7 @@ socketio = SocketIO(
 users          = {}
 socket_to_user = {}
 socket_to_room = {}
+invisible_users = set()          # user IDs currently in invisible mode
 
 # --------------------------------------------------
 # ROOM HELPERS
@@ -413,10 +414,12 @@ def handle_disconnect():
     if user_id:
         users.pop(user_id, None)
         socket_to_user.pop(sid, None)
+        invisible_users.discard(user_id)
         print(f"🔌 {user_id} disconnected")
     else:
         print(f"🔌 {sid} disconnected")
-    socketio.emit("update_users", list(users.values()))
+    visible = [u for u in users.values() if u["id"] not in invisible_users]
+    socketio.emit("update_users", visible)
 
 # --------------------------------------------------
 # LOCATION
@@ -436,7 +439,29 @@ def handle_location(data):
         "timestamp": time.time(),
     }
     socket_to_user[sid] = user_id
-    socketio.emit("update_users", list(users.values()))
+    visible = [u for u in users.values() if u["id"] not in invisible_users]
+    socketio.emit("update_users", visible)
+
+# --------------------------------------------------
+# INVISIBLE MODE
+# --------------------------------------------------
+@socketio.on("set_invisible")
+def handle_set_invisible(data):
+    user_id   = data.get("userId")
+    invisible = data.get("invisible", False)
+    if not user_id:
+        return
+    if invisible:
+        invisible_users.add(user_id)
+        print(f"👻 {user_id} went invisible")
+    else:
+        invisible_users.discard(user_id)
+        print(f"👁️  {user_id} is now visible")
+    # Broadcast the updated (filtered) user list to everyone
+    visible = [u for u in users.values() if u["id"] not in invisible_users]
+    socketio.emit("update_users", visible)
+    # Confirm back to the requesting client
+    emit("invisible_confirmed", {"invisible": invisible})
 
 # --------------------------------------------------
 # CHAT — SEND MESSAGE
