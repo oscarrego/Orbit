@@ -276,11 +276,19 @@ def handle_join(data):
         print("   ✅ Passcode correct")
 
     else:
-        # Public join — block if the name belongs to a private room
-        existing = get_room(room)
-        if existing:
-            emit("room_error", {"message": "That room is private. Use a passcode to join."})
-            return
+        # Public join —
+        #   "Global" is always allowed (app auto-joins it on load).
+        #   Any other name must exist in the DB as a non-private room.
+        #   Unknown names are rejected — we never auto-create rooms here.
+        if room != "Global":
+            existing = get_room(room)
+            if not existing:
+                print(f"   ❌ Public room '{room}' not found in DB — rejecting")
+                emit("room_error", {"message": "Room does not exist"})
+                return
+            if existing.get("isPrivate"):
+                emit("room_error", {"message": "That room is private. Use a passcode to join."})
+                return
 
     # --------------------------------------------------
     # SWITCH SOCKET ROOM

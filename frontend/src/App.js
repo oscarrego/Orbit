@@ -176,13 +176,14 @@ function App() {
       showToast({ message, type: "error" });
     });
 
-    // 🔍 CHECK ROOM RESULT  → decide whether to show passcode modal
+    // 🔍 CHECK ROOM RESULT  → decide whether to show passcode modal or error
     socket.on("check_room_result", ({ room, exists, isPrivate }) => {
       console.log("🔍 check_room_result:", { room, exists, isPrivate });
 
       if (!exists) {
-        // Public room that doesn't exist yet — join directly (backend will allow)
-        doJoinPublic(room);
+        // Room is not in the database — reject, never join
+        console.warn(`❌ Room '${room}' does not exist in DB — blocking join`);
+        showToast({ message: "Room does not exist", type: "error" });
         return;
       }
 
@@ -192,7 +193,7 @@ function App() {
         return;
       }
 
-      // Public room that exists — join directly
+      // Public room that exists in DB — join directly
       doJoinPublic(room);
     });
 
