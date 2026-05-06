@@ -2,84 +2,83 @@ import eventlet
 eventlet.monkey_patch()
 
 import os
-from flask import Flask, request
+from flask import Flask, request, jsonify
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit, join_room, leave_room
 import time
 from bson.objectid import ObjectId
 
 from pymongo import MongoClient, ASCENDING
-from pymongo.errors import DuplicateKeyError, OperationFailure
+from pymongo.errors import DuplicateKeyError
 from datetime import datetime
 
 # --------------------------------------------------
 # DATABASE
 # --------------------------------------------------
 MONGO_URI = os.environ.get("MONGO_URI")
-
-client = MongoClient(MONGO_URI)
-db = client["orbit"]
+client    = MongoClient(MONGO_URI)
+db        = client["orbit"]
 
 messages_collection = db["messages"]
 rooms_collection    = db["rooms"]
 
 # --------------------------------------------------
-# INDEX SETUP  (safe — won't blow up on corrupt state)
+# INDEX SETUP
+#
+# Root-cause fix: stale indexes from previous code
+# versions (e.g. unique index on 'creator', 'name',
+# or any field that is not 'roomName') cause every
+# insert_one to throw DuplicateKeyError even when the
+# roomName itself is brand-new.
+#
+# Solution: print every index, wipe ALL non-_id ones,
+# then rebuild exactly one — roomName (sparse+unique).
+# sparse=True means documents without a 'roomName'
+# field are excluded from the index entirely, which
+# prevents null-collision errors.
 # --------------------------------------------------
 
-# TTL index on messages
+# ── messages TTL ──────────────────────────────────
 try:
-    messages_collection.create_index("createdAt", expireAfterSeconds=86400)
-    print("✅ messages TTL index ready")
+    messages_collection.create_index(
+        "createdAt", expireAfterSeconds=86400, background=True
+    )
+    print("✅ messages TTL index OK")
 except Exception as e:
-    print(f"⚠️  messages TTL index error (non-fatal): {e}")
+    print(f"⚠️  messages index: {e}")
 
-# Unique index on rooms.roomName
-# We drop first so a stale/corrupt index from a previous run can't block inserts.
-def ensure_rooms_index():
+# ── rooms — full index reset ──────────────────────
+print("\n🔎 Current indexes on 'rooms' collection:")
+try:
+    idx_info = rooms_collection.index_information()
+    for idx_name, idx_data in idx_info.items():
+        print(f"   • {idx_name}: {idx_data}")
+except Exception as e:
+    print(f"   ⚠️  Could not read indexes: {e}")
+    idx_info = {}
+
+# Drop every custom index (keep _id_)
+for idx_name in list(idx_info.keys()):
+    if idx_name == "_id_":
+        continue
     try:
-        existing = rooms_collection.index_information()
-        if "roomName_unique" in existing:
-            rooms_collection.drop_index("roomName_unique")
-            print("🗑️  Dropped stale roomName_unique index")
+        rooms_collection.drop_index(idx_name)
+        print(f"   🗑️  Dropped stale index: {idx_name}")
     except Exception as e:
-        print(f"⚠️  Could not drop rooms index (non-fatal): {e}")
+        print(f"   ⚠️  Could not drop '{idx_name}': {e}")
 
-    try:
-        rooms_collection.create_index(
-            [("roomName", ASCENDING)],
-            unique=True,
-            name="roomName_unique"
-        )
-        print("✅ rooms unique index ready")
-    except OperationFailure as e:
-        # This can happen if existing data has duplicate / null roomName values.
-        # Clean those up first, then retry.
-        print(f"⚠️  Index creation failed (likely dirty data): {e}")
-        print("🧹 Removing documents without a valid roomName and retrying...")
-        rooms_collection.delete_many({"roomName": {"$exists": False}})
-        rooms_collection.delete_many({"roomName": None})
-        # Remove duplicates — keep the first occurrence of each roomName
-        seen = set()
-        for doc in rooms_collection.find({}, {"roomName": 1}):
-            name = doc.get("roomName")
-            if name in seen:
-                rooms_collection.delete_one({"_id": doc["_id"]})
-                print(f"🧹 Removed duplicate room doc: {doc['_id']}")
-            else:
-                seen.add(name)
-        # Second attempt
-        try:
-            rooms_collection.create_index(
-                [("roomName", ASCENDING)],
-                unique=True,
-                name="roomName_unique"
-            )
-            print("✅ rooms unique index ready (after cleanup)")
-        except Exception as e2:
-            print(f"❌ FATAL: Could not create rooms index even after cleanup: {e2}")
-
-ensure_rooms_index()
+# Rebuild the ONE index we actually want
+try:
+    rooms_collection.create_index(
+        [("roomName", ASCENDING)],
+        unique=True,
+        sparse=True,          # ignores docs without roomName — no null collisions
+        name="roomName_unique",
+        background=True,
+    )
+    print("✅ rooms unique+sparse index on 'roomName' ready\n")
+except Exception as e:
+    print(f"❌ Could not create rooms index: {e}\n")
 
 # --------------------------------------------------
 # FLASK + SOCKETIO
@@ -92,32 +91,35 @@ socketio = SocketIO(
     cors_allowed_origins="*",
     async_mode="eventlet",
     logger=True,
-    engineio_logger=True
+    engineio_logger=True,
 )
 
 # --------------------------------------------------
-# In-memory session state  (ephemeral — NOT used for room auth)
+# In-memory session state  (ephemeral — NOT for auth)
 # --------------------------------------------------
-users          = {}  # user_id -> user data
-socket_to_user = {}  # sid    -> user_id
-socket_to_room = {}  # sid    -> current room
+users          = {}
+socket_to_user = {}
+socket_to_room = {}
 
 # --------------------------------------------------
-# HELPERS
+# ROOM HELPERS
 # --------------------------------------------------
 def get_room(room_name):
     """
-    Fetch a room document from MongoDB by roomName.
-    Returns the document dict, or None if not found.
+    Query rooms_collection for a document with roomName == room_name.
+    Returns the dict or None.
     """
-    result = rooms_collection.find_one({"roomName": room_name})
-    print(f"🔍 get_room('{room_name}') → {'FOUND' if result else 'NOT FOUND'}")
-    return result
+    doc = rooms_collection.find_one({"roomName": room_name})
+    if doc:
+        print(f"🔍 get_room('{room_name}') → FOUND  _id={doc['_id']}")
+    else:
+        print(f"🔍 get_room('{room_name}') → NOT FOUND")
+    return doc
 
 
-def create_room(room_name, passcode, creator_sid):
+def db_create_room(room_name, passcode, creator_sid):
     """
-    Insert a new private room.
+    Insert a new private room document into MongoDB.
     Returns (doc, None) on success, (None, error_str) on failure.
     """
     doc = {
@@ -127,109 +129,131 @@ def create_room(room_name, passcode, creator_sid):
         "createdAt": datetime.utcnow(),
         "isPrivate": True,
     }
-    print(f"📝 Attempting to create room: roomName='{room_name}', passcode='{passcode}'")
+    print(f"📝 db_create_room: roomName='{room_name}'  passcode='{passcode}'")
     try:
         result = rooms_collection.insert_one(doc)
-        inserted_id = str(result.inserted_id)
-        doc["_id"] = inserted_id
-        print(f"✅ Room '{room_name}' created successfully. _id={inserted_id}")
+        _id = str(result.inserted_id)
+        doc["_id"] = _id
+        print(f"✅ Room '{room_name}' saved to MongoDB  _id={_id}")
         return doc, None
-    except DuplicateKeyError as e:
-        print(f"❌ DuplicateKeyError creating room '{room_name}': {e}")
+
+    except DuplicateKeyError as exc:
+        # Log the EXACT field that caused the conflict so we can diagnose
+        details = getattr(exc, "details", {}) or {}
+        key_val = details.get("keyValue", "unknown")
+        print(f"❌ DuplicateKeyError on room '{room_name}'")
+        print(f"   conflicting key → {key_val}")
+        print(f"   full details   → {details}")
         return None, "Room already exists"
-    except Exception as e:
-        print(f"❌ Unexpected error creating room '{room_name}': {e}")
-        return None, str(e)
+
+    except Exception as exc:
+        print(f"❌ insert_one failed for '{room_name}': {exc}")
+        return None, str(exc)
+
+# --------------------------------------------------
+# DEBUG HTTP ENDPOINTS
+# --------------------------------------------------
+
+@app.route("/api/rooms", methods=["GET"])
+def list_rooms():
+    """Return all room documents (passcode redacted)."""
+    docs = list(rooms_collection.find({}, {"passcode": 0}))
+    for d in docs:
+        d["_id"] = str(d["_id"])
+        if "createdAt" in d:
+            d["createdAt"] = d["createdAt"].isoformat()
+    return jsonify({"count": len(docs), "rooms": docs})
+
+
+@app.route("/api/rooms/indexes", methods=["GET"])
+def show_indexes():
+    """Return every index on the rooms collection."""
+    raw = rooms_collection.index_information()
+    return jsonify(raw)
+
+
+@app.route("/api/rooms/nuke", methods=["DELETE"])
+def nuke_rooms():
+    """
+    Emergency reset: delete every document in rooms_collection.
+    Call this once from Postman/curl if there is stale data blocking inserts.
+    """
+    result = rooms_collection.delete_many({})
+    return jsonify({"deleted": result.deleted_count})
 
 # --------------------------------------------------
 # CONNECT
 # --------------------------------------------------
 @socketio.on("connect")
-def connect():
-    print(f"✅ Client connected: {request.sid}")
+def handle_connect():
+    print(f"✅ connect: {request.sid}")
 
 # --------------------------------------------------
 # JOIN ROOM
 # --------------------------------------------------
 @socketio.on("join_room")
 def handle_join(data):
-    print(f"\n{'='*50}")
-    print(f"📦 join_room received: {data}")
+    print(f"\n{'='*55}")
+    print(f"📦 join_room: {data}")
 
     room       = (data.get("room") or "Global").strip()
     passcode   = (data.get("passcode") or "").strip()
     is_private = bool(data.get("isPrivate", False))
     sid        = request.sid
 
-    print(f"   room='{room}'  passcode='{passcode}'  is_private={is_private}  sid={sid}")
+    print(f"   room='{room}'  passcode='{passcode}'  is_private={is_private}")
 
     # --------------------------------------------------
     # PRIVATE ROOM AUTH
     # --------------------------------------------------
     if is_private:
-        print(f"🔒 Private room flow for '{room}'")
         existing = get_room(room)
 
         if existing:
-            print(f"   Room EXISTS in DB. Stored passcode='{existing.get('passcode')}'  Supplied='{passcode}'")
             # Room exists — verify passcode
-            if existing["passcode"] != passcode:
-                print(f"   ❌ Passcode mismatch")
+            stored = existing.get("passcode", "")
+            print(f"   Passcode check: stored='{stored}'  given='{passcode}'  match={stored == passcode}")
+            if stored != passcode:
                 emit("room_error", {"message": "Invalid room passcode"})
                 return
-            print(f"   ✅ Passcode correct — joining")
-            # Fall through to join
+            print("   ✅ Passcode correct — joining existing private room")
 
         else:
-            print(f"   Room DOES NOT EXIST — creating it")
             # Room is new — create it
             if not passcode:
-                print(f"   ❌ No passcode provided for new private room")
-                emit("room_error", {"message": "Passcode is required to create a private room"})
+                emit("room_error", {"message": "Passcode is required"})
                 return
 
-            new_doc, err = create_room(room, passcode, sid)
+            new_doc, err = db_create_room(room, passcode, sid)
             if err:
-                print(f"   ❌ create_room failed: {err}")
                 emit("room_error", {"message": f"Could not create room: {err}"})
                 return
 
-            print(f"   ✅ Room created: {new_doc}")
-
     else:
-        print(f"🌐 Public room flow for '{room}'")
-        # Public join: block if a private room already owns this name
+        # Public join — block if the name is a private room
         existing = get_room(room)
         if existing:
-            print(f"   ❌ '{room}' is a private room — blocking public join")
             emit("room_error", {"message": "That room is private. Use a passcode to join."})
             return
-        print(f"   ✅ Public room OK")
 
     # --------------------------------------------------
-    # LEAVE OLD SOCKET ROOM
+    # SWITCH SOCKET ROOM
     # --------------------------------------------------
-    old_room = socket_to_room.get(sid)
-    if old_room:
-        leave_room(old_room)
-        print(f"   Left old room: '{old_room}'")
-
-    # --------------------------------------------------
-    # JOIN SOCKET ROOM
-    # --------------------------------------------------
+    old = socket_to_room.get(sid)
+    if old:
+        leave_room(old)
     join_room(room)
     socket_to_room[sid] = room
-    print(f"👤 {sid} joined room '{room}'")
+    print(f"👤 {sid} joined '{room}'")
 
     # --------------------------------------------------
-    # LOAD LAST 24 h OF MESSAGES
+    # LOAD LAST 24 h MESSAGES
     # --------------------------------------------------
-    cutoff = time.time() - 86400
+    cutoff   = time.time() - 86400
     messages = list(
-        messages_collection.find({
-            "room":      room,
-            "timestamp": {"$gt": cutoff}
-        }).sort("timestamp", 1)
+        messages_collection.find(
+            {"room": room, "timestamp": {"$gt": cutoff}}
+        ).sort("timestamp", 1)
     )
     for msg in messages:
         msg["_id"] = str(msg["_id"])
@@ -239,62 +263,51 @@ def handle_join(data):
 
     emit("load_messages", messages)
     emit("room_joined", {"room": room})
-    print(f"   Emitted room_joined for '{room}'")
-    print(f"{'='*50}\n")
+    print(f"{'='*55}\n")
 
 # --------------------------------------------------
-# CHECK ROOM  (called before join to decide modal flow)
+# CHECK ROOM
 # --------------------------------------------------
 @socketio.on("check_room")
 def handle_check_room(data):
-    """
-    Client sends {room: "roomName"}.
-    Server replies with {exists: bool, isPrivate: bool, room: str}.
-    No passcode required — metadata lookup only.
-    """
     room_name = (data.get("room") or "").strip()
     print(f"🔍 check_room: '{room_name}'")
-
     if not room_name:
-        emit("check_room_result", {"exists": False, "isPrivate": False, "room": room_name})
+        emit("check_room_result", {"exists": False, "isPrivate": False, "room": ""})
         return
-
-    doc = get_room(room_name)
+    doc    = get_room(room_name)
     result = {
         "exists":    doc is not None,
         "isPrivate": doc.get("isPrivate", False) if doc else False,
         "room":      room_name,
     }
-    print(f"   check_room_result: {result}")
+    print(f"   → {result}")
     emit("check_room_result", result)
 
 # --------------------------------------------------
 # DISCONNECT
 # --------------------------------------------------
 @socketio.on("disconnect")
-def disconnect():
+def handle_disconnect():
     sid     = request.sid
     user_id = socket_to_user.get(sid)
     socket_to_room.pop(sid, None)
-
     if user_id:
         users.pop(user_id, None)
         socket_to_user.pop(sid, None)
-        print(f"🔌 User {user_id} disconnected")
+        print(f"🔌 {user_id} disconnected")
     else:
-        print(f"🔌 Unknown client disconnected: {sid}")
-
+        print(f"🔌 {sid} disconnected")
     socketio.emit("update_users", list(users.values()))
 
 # --------------------------------------------------
-# LOCATION UPDATE
+# LOCATION
 # --------------------------------------------------
 @socketio.on("send_location")
 def handle_location(data):
     user_id = data.get("id")
     if not user_id:
         return
-
     sid = request.sid
     users[user_id] = {
         "id":        user_id,
@@ -312,17 +325,12 @@ def handle_location(data):
 # --------------------------------------------------
 @socketio.on("send_message")
 def handle_message(data):
-    print("📨 MESSAGE RECEIVED:", data)
-
     user      = data.get("user")
     text      = data.get("text", "").strip()
     room      = data.get("room", "Global")
     sender_id = data.get("senderId")
-
     if not user or not text or not sender_id:
-        print("❌ INVALID MESSAGE — missing fields")
         return
-
     message = {
         "senderId":  sender_id,
         "user":      user,
@@ -332,46 +340,43 @@ def handle_message(data):
         "createdAt": datetime.utcnow(),
         "seenBy":    [sender_id],
     }
-
     result = messages_collection.insert_one(message)
     message.pop("createdAt")
-
-    message_to_send = {**message, "_id": str(result.inserted_id)}
-    socketio.emit("receive_message", message_to_send, room=room, include_self=False)
+    socketio.emit(
+        "receive_message",
+        {**message, "_id": str(result.inserted_id)},
+        room=room,
+        include_self=False,
+    )
 
 # --------------------------------------------------
 # CHAT — MESSAGE SEEN
 # --------------------------------------------------
 @socketio.on("message_seen")
 def handle_message_seen(data):
-    message_id = data.get("messageId")
-    user_id    = data.get("userId")
-
-    if not message_id or not user_id:
+    mid = data.get("messageId")
+    uid = data.get("userId")
+    if not mid or not uid:
         return
-
     messages_collection.update_one(
-        {"_id": ObjectId(message_id)},
-        {"$addToSet": {"seenBy": user_id}}
+        {"_id": ObjectId(mid)},
+        {"$addToSet": {"seenBy": uid}}
     )
-
-    updated_msg = messages_collection.find_one({"_id": ObjectId(message_id)})
-    if updated_msg:
-        updated_msg["_id"] = str(updated_msg["_id"])
-        updated_msg.pop("createdAt", None)
-        socketio.emit("message_updated", updated_msg, room=updated_msg["room"])
+    updated = messages_collection.find_one({"_id": ObjectId(mid)})
+    if updated:
+        updated["_id"] = str(updated["_id"])
+        updated.pop("createdAt", None)
+        socketio.emit("message_updated", updated, room=updated["room"])
 
 # --------------------------------------------------
 # SOS
 # --------------------------------------------------
 @socketio.on("sos_alert")
 def handle_sos(data):
-    print("🚨 SOS ALERT:", data)
     socketio.emit("sos_alert", data)
 
 @socketio.on("sos_cancel")
 def handle_sos_cancel(data):
-    print("🔕 SOS CANCEL:", data)
     socketio.emit("sos_cancel", data)
 
 # --------------------------------------------------
