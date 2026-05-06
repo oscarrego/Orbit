@@ -3,6 +3,7 @@ import MapView from "./components/MapView";
 import Login from "./components/Login";
 import ProfileModal from "./components/ProfileModal";
 import OrbitEasterEgg from "./components/OrbitEasterEgg";
+import CreateRoomModal from "./components/CreateRoomModal";
 import socket from "./components/SocketManager";
 import "./App.css";
 
@@ -37,6 +38,7 @@ function App() {
   const [fabOpen, setFabOpen] = useState(false);
   const [activePanel, setActivePanel] = useState(null); // 'chat', 'users', or null
   const [showProfile, setShowProfile] = useState(false);
+  const [showCreateRoomModal, setShowCreateRoomModal] = useState(false);
   const [showEasterEgg, setShowEasterEgg] = useState(false);
   const [is3DView, setIs3DView] = useState(false);
   
@@ -44,6 +46,7 @@ function App() {
   const [chatMessages, setChatMessages] = useState([]);
   const [msgInput, setMsgInput] = useState("");
   const [currentRoom, setCurrentRoom] = useState(localStorage.getItem("roomId") || "Global");
+  const [isRoomPrivate, setIsRoomPrivate] = useState(false);
   const [roomInput, setRoomInput] = useState("");
   const chatEndRef = useRef(null);
   
@@ -240,6 +243,7 @@ showToast({
     setChatMessages([]); // 🔥 ADD THIS LINE
 
     setCurrentRoom(room);
+    setIsRoomPrivate(false);
     localStorage.setItem("roomId", room);
     socket.emit("join_room", { room });
     setRoomInput("");
@@ -248,6 +252,23 @@ showToast({
   type: "room"
 });
 };
+
+  const handleCreateRoom = (roomData) => {
+    setChatMessages([]);
+    setCurrentRoom(roomData.name);
+    setIsRoomPrivate(roomData.isPrivate);
+    localStorage.setItem("roomId", roomData.name);
+    socket.emit("join_room", { 
+      room: roomData.name, 
+      isPrivate: roomData.isPrivate, 
+      password: roomData.password 
+    });
+    setShowCreateRoomModal(false);
+    showToast({
+      message: `Created room: ${roomData.name}`,
+      type: "room"
+    });
+  };
 
   // 💬 Handle Send Message
   const sendMessage = (e) => {
@@ -412,19 +433,33 @@ showToast({
       <div className={`chat-panel ${activePanel === "chat" ? "open" : "closed"}`}>
         <div className="chat-header">
           <div className="online-dot"></div>
-          <span>ORBIT CHAT - ROOM: {currentRoom.toUpperCase()}</span>
+          <div className="header-text-container">
+            <span>ORBIT CHAT - </span>
+            <span className="active-room-name">{currentRoom.toUpperCase()}</span>
+            {isRoomPrivate && (
+              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" className="header-lock-icon">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+              </svg>
+            )}
+          </div>
         </div>
 
         <div className="room-controls">
-          <input 
-            type="text" 
-            className="room-input" 
-            placeholder="Join or Create Room..." 
-            value={roomInput}
-            onChange={(e) => setRoomInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSwitchRoom()}
-          />
-          <button className="join-btn" onClick={handleSwitchRoom}>JOIN</button>
+          <div className="join-row">
+            <input 
+              type="text" 
+              className="room-input" 
+              placeholder="Enter Room ID..." 
+              value={roomInput}
+              onChange={(e) => setRoomInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSwitchRoom()}
+            />
+            <button className="join-btn" onClick={handleSwitchRoom}>JOIN</button>
+          </div>
+          <button className="create-room-trigger" onClick={() => setShowCreateRoomModal(true)}>
+            + Create Private Room
+          </button>
         </div>
         
         <div className="chat-messages">
@@ -861,6 +896,13 @@ showToast({
           onClose={() => setShowProfile(false)} 
           onChangeAvatar={changeAvatar}
           onUpdateUsername={updateUsername}
+        />
+      )}
+
+      {showCreateRoomModal && (
+        <CreateRoomModal 
+          onClose={() => setShowCreateRoomModal(false)} 
+          onCreate={handleCreateRoom}
         />
       )}
 
