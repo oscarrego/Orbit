@@ -1,9 +1,10 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import MapView from "./components/MapView";
 import Login from "./components/Login";
 import ProfileModal from "./components/ProfileModal";
 import OrbitEasterEgg from "./components/OrbitEasterEgg";
 import CreateRoomModal from "./components/CreateRoomModal";
+import JoinRoomModal from "./components/JoinRoomModal";
 import socket from "./components/SocketManager";
 import "./App.css";
 
@@ -41,6 +42,10 @@ function App() {
   const [showCreateRoomModal, setShowCreateRoomModal] = useState(false);
   const [showEasterEgg, setShowEasterEgg] = useState(false);
   const [is3DView, setIs3DView] = useState(false);
+
+  // 🔑 Join-room passcode modal state
+  const [joinModal, setJoinModal] = useState(null);  // null | { roomName, loading, error }
+  const joinModalRef = useRef(null); // keep latest modal state for socket callbacks
   
   // 💬 Chat State
   const [chatMessages, setChatMessages] = useState([]);
@@ -117,7 +122,14 @@ function App() {
     // 🔒 ROOM ERROR (wrong passcode, private collision, etc.)
     socket.on("room_error", ({ message }) => {
       console.warn("🔒 ROOM ERROR:", message);
-      // Roll back to Global
+
+      // If the passcode modal is open, surface the error inside it
+      if (joinModalRef.current) {
+        setJoinModal(prev => prev ? { ...prev, loading: false, error: message } : null);
+        return;
+      }
+
+      // Otherwise roll back to Global (e.g. create-room failure)
       const rolledBack = "Global";
       setCurrentRoom(rolledBack);
       localStorage.setItem("roomId", rolledBack);
@@ -130,7 +142,41 @@ function App() {
     // ✅ ROOM JOINED CONFIRMATION
     socket.on("room_joined", ({ room }) => {
       console.log("✅ Joined room:", room);
+      // Commit room state — works for both public and private joins
+      setCurrentRoom(room);
+      localStorage.setItem("roomId", room);
+
+      if (joinModalRef.current) {
+        // Private join — came via passcode modal
+        setIsRoomPrivate(true);
+        setChatMessages([]);
+        setJoinModal(null);
+      } else {
+        // Public join
+        setIsRoomPrivate(false);
+      }
+
       showToast({ message: `Joined room: ${room}`, type: "room" });
+    });
+
+    // 🔍 CHECK ROOM RESULT  → decide whether to show passcode modal
+    socket.on("check_room_result", ({ room, exists, isPrivate }) => {
+      console.log("🔍 check_room_result:", { room, exists, isPrivate });
+
+      if (!exists) {
+        // Public room that doesn't exist yet — join directly (backend will allow)
+        doJoinPublic(room);
+        return;
+      }
+
+      if (isPrivate) {
+        // Private room — open passcode modal
+        setJoinModal({ roomName: room, loading: false, error: null });
+        return;
+      }
+
+      // Public room that exists — join directly
+      doJoinPublic(room);
     });
 
     return () => {
@@ -142,8 +188,15 @@ function App() {
       socket.off("sos_cancel");
       socket.off("room_error");
       socket.off("room_joined");
+      socket.off("check_room_result");
     };
+
   }, [user.username]);
+
+  // Keep ref in sync so socket callbacks can read latest modal state
+  useEffect(() => {
+    joinModalRef.current = joinModal;
+  }, [joinModal]);
 
   // 📜 Auto-scroll chat
   useEffect(() => {
@@ -257,17 +310,35 @@ showToast({
   type: "success"
 });
 };
-  const handleSwitchRoom = () => {
-    const room = roomInput.trim();
-    if (!room || room === currentRoom) return;
+  // Directly join a public room (no passcode required)
+  const doJoinPublic = useCallback((room) => {
     setChatMessages([]);
-
-    setCurrentRoom(room);
-    setIsRoomPrivate(false);
     localStorage.setItem("roomId", room);
     socket.emit("join_room", { room });
     setRoomInput("");
-};
+  }, []);
+
+  // JOIN button handler — asks backend for room type first
+  const handleSwitchRoom = () => {
+    const room = roomInput.trim();
+    if (!room || room === currentRoom) return;
+    setRoomInput("");
+    // Ask backend whether this room exists and whether it's private
+    socket.emit("check_room", { room });
+  };
+
+  // Called by JoinRoomModal when the user submits a passcode
+  const handlePasscodeJoin = (passcode) => {
+    if (!joinModal) return;
+    const { roomName } = joinModal;
+    setJoinModal(prev => ({ ...prev, loading: true, error: null }));
+    // Don't update currentRoom yet — wait for server room_joined confirmation
+    socket.emit("join_room", { room: roomName, isPrivate: true, passcode });
+  };
+
+  const handlePasscodeCancel = () => {
+    setJoinModal(null);
+  };
 
   const handleCreateRoom = (roomData) => {
     // Close modal immediately; we'll confirm success/failure via socket events
@@ -918,6 +989,16 @@ showToast({
         <CreateRoomModal 
           onClose={() => setShowCreateRoomModal(false)} 
           onCreate={handleCreateRoom}
+        />
+      )}
+
+      {joinModal && (
+        <JoinRoomModal
+          roomName={joinModal.roomName}
+          onJoin={handlePasscodeJoin}
+          onCancel={handlePasscodeCancel}
+          error={joinModal.error}
+          loading={joinModal.loading}
         />
       )}
 

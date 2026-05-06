@@ -1,0 +1,293 @@
+/* ============================================================
+   JoinRoomModal.css  –  Orbit passcode join modal
+   ============================================================ */
+
+/* ── Overlay ─────────────────────────────────────────── */
+.jr-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 25000;
+  animation: jr-fade-in 0.25s ease-out;
+  padding: 16px;
+}
+
+@keyframes jr-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ── Modal card ──────────────────────────────────────── */
+.jr-modal {
+  width: 340px;
+  max-width: 100%;
+  background: rgba(10, 10, 12, 0.82);
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 22px;
+  padding: 28px 24px 24px;
+  box-shadow:
+    0 40px 80px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(255, 255, 255, 0.03) inset,
+    0 0 60px rgba(59, 130, 246, 0.04);
+  color: white;
+  animation: jr-slide-up 0.38s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes jr-slide-up {
+  from { opacity: 0; transform: translateY(18px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)   scale(1);    }
+}
+
+/* ── Header ──────────────────────────────────────────── */
+.jr-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 26px;
+}
+
+.jr-lock-icon {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px solid rgba(59, 130, 246, 0.18);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(147, 197, 253, 0.9);
+  box-shadow: 0 0 16px rgba(59, 130, 246, 0.12);
+}
+
+.jr-lock-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.jr-title {
+  margin: 0 0 3px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.1px;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.jr-subtitle {
+  margin: 0;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.38);
+  font-weight: 400;
+}
+
+.jr-room-name {
+  color: rgba(147, 197, 253, 0.85);
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+/* ── OTP row ─────────────────────────────────────────── */
+.jr-otp-wrap {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 6px;
+  transition: transform 0.15s ease;
+}
+
+.jr-otp-box {
+  flex: 1;
+  max-width: 64px;
+  height: 58px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 13px;
+  color: white;
+  font-size: 22px;
+  font-weight: 700;
+  text-align: center;
+  outline: none;
+  caret-color: transparent;
+  transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.25);
+  letter-spacing: 0;
+}
+
+.jr-otp-box:focus {
+  background: rgba(59, 130, 246, 0.07);
+  border-color: rgba(59, 130, 246, 0.55);
+  box-shadow:
+    0 0 0 3px rgba(59, 130, 246, 0.1),
+    inset 0 1px 4px rgba(0, 0, 0, 0.2);
+  transform: translateY(-2px);
+}
+
+.jr-otp-box:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* filled state */
+.jr-otp-box:not(:placeholder-shown) {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+/* error state */
+.jr-has-error .jr-otp-box {
+  border-color: rgba(239, 68, 68, 0.45);
+  background: rgba(239, 68, 68, 0.04);
+}
+
+.jr-has-error .jr-otp-box:focus {
+  border-color: #ef4444;
+  box-shadow:
+    0 0 0 3px rgba(239, 68, 68, 0.12),
+    inset 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* ── Shake animation ─────────────────────────────────── */
+.jr-shake {
+  animation: jr-shake-anim 0.45s cubic-bezier(.36,.07,.19,.97) both;
+}
+
+@keyframes jr-shake-anim {
+  10%, 90% { transform: translate3d(-2px, 0, 0); }
+  20%, 80% { transform: translate3d(3px,  0, 0); }
+  30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+  40%, 60% { transform: translate3d(4px,  0, 0); }
+}
+
+/* ── Error message ───────────────────────────────────── */
+.jr-error-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 22px;
+  margin-bottom: 20px;
+  margin-top: 10px;
+  opacity: 0;
+  transform: translateY(-4px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  font-size: 11px;
+  font-weight: 600;
+  color: #f87171;
+  letter-spacing: 0.3px;
+}
+
+.jr-error-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.jr-error-icon {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+  color: #f87171;
+}
+
+/* ── Actions ─────────────────────────────────────────── */
+.jr-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.jr-cancel-btn,
+.jr-join-btn {
+  flex: 1;
+  padding: 12px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+
+.jr-cancel-btn {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  color: rgba(255, 255, 255, 0.45);
+  text-transform: uppercase;
+}
+
+.jr-cancel-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.85);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.jr-join-btn {
+  background: linear-gradient(160deg, #3b82f6 0%, #2563eb 100%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: white;
+  text-transform: uppercase;
+  box-shadow:
+    0 4px 14px rgba(37, 99, 235, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.jr-join-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow:
+    0 7px 20px rgba(37, 99, 235, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  filter: brightness(1.08);
+}
+
+.jr-join-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.jr-join-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  box-shadow: none;
+  filter: none;
+  transform: none;
+}
+
+/* ── Loading spinner ─────────────────────────────────── */
+.jr-spinner {
+  display: inline-block;
+  width: 15px;
+  height: 15px;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: jr-spin 0.65s linear infinite;
+}
+
+@keyframes jr-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Mobile ──────────────────────────────────────────── */
+@media (max-width: 420px) {
+  .jr-modal {
+    padding: 22px 18px 20px;
+    border-radius: 18px;
+  }
+
+  .jr-otp-box {
+    height: 52px;
+    font-size: 20px;
+    border-radius: 11px;
+  }
+
+  .jr-title { font-size: 14px; }
+}

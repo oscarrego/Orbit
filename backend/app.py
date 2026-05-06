@@ -175,6 +175,28 @@ def handle_join(data):
     emit("room_joined", {"room": room})
 
 # --------------------------------------------------
+# CHECK ROOM  (called before join to decide modal flow)
+# --------------------------------------------------
+@socketio.on("check_room")
+def handle_check_room(data):
+    """
+    Client sends {room: "roomName"}.
+    Server replies with {exists: bool, isPrivate: bool}.
+    No passcode required here — just a metadata lookup.
+    """
+    room_name = (data.get("room") or "").strip()
+    if not room_name:
+        emit("check_room_result", {"exists": False, "isPrivate": False})
+        return
+
+    doc = get_room(room_name)
+    emit("check_room_result", {
+        "exists":    doc is not None,
+        "isPrivate": doc["isPrivate"] if doc else False,
+        "room":      room_name,
+    })
+
+# --------------------------------------------------
 # DISCONNECT
 # --------------------------------------------------
 @socketio.on("disconnect")
