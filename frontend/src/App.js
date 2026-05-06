@@ -140,25 +140,40 @@ function App() {
       showToast({ message, type: "error" });
     });
 
-    // ✅ ROOM JOINED CONFIRMATION
+    // ✅ ROOM JOINED CONFIRMATION (join flow only)
     socket.on("room_joined", ({ room }) => {
       console.log("✅ Joined room:", room);
 
       const wasPrivate = pendingJoinRef.current?.isPrivate ?? false;
-      pendingJoinRef.current = null; // clear pending
+      pendingJoinRef.current = null;
 
-      // Commit room state
       setCurrentRoom(room);
       localStorage.setItem("roomId", room);
-      setChatMessages([]);         // always clear on room switch
+      setChatMessages([]);
       setIsRoomPrivate(wasPrivate);
 
-      // Close passcode modal if it was open
       if (joinModalRef.current) {
         setJoinModal(null);
       }
 
       showToast({ message: `Joined room: ${room}`, type: "room" });
+    });
+
+    // 🔒 ROOM CREATED CONFIRMATION (create flow only)
+    socket.on("room_created", ({ room }) => {
+      console.log("🔒 Room created:", room);
+      setCurrentRoom(room);
+      localStorage.setItem("roomId", room);
+      setChatMessages([]);
+      setIsRoomPrivate(true);
+      showToast({ message: `Room “${room}” created!`, type: "room" });
+    });
+
+    // ❌ CREATE ROOM ERROR
+    socket.on("create_room_error", ({ message }) => {
+      console.warn("❌ create_room_error:", message);
+      // Don't touch room state — just show the error
+      showToast({ message, type: "error" });
     });
 
     // 🔍 CHECK ROOM RESULT  → decide whether to show passcode modal
@@ -190,6 +205,8 @@ function App() {
       socket.off("sos_cancel");
       socket.off("room_error");
       socket.off("room_joined");
+      socket.off("room_created");
+      socket.off("create_room_error");
       socket.off("check_room_result");
     };
 
@@ -343,18 +360,13 @@ showToast({
   };
 
   const handleCreateRoom = (roomData) => {
-    // Close the creation modal immediately
     setShowCreateRoomModal(false);
-
-    console.log("🔒 Creating private room:", roomData.name, "passcode:", roomData.passcode);
-
-    // Set pending flag so room_joined knows this was a private join
-    pendingJoinRef.current = { isPrivate: true };
-
-    socket.emit("join_room", {
-      room:      roomData.name,
-      isPrivate: roomData.isPrivate,
-      passcode:  roomData.passcode,
+    console.log("🔒 Emitting create_room:", roomData.name, "passcode:", roomData.passcode);
+    // Emit to the dedicated CREATE event — never join_room
+    // Backend will reject with create_room_error if room already exists
+    socket.emit("create_room", {
+      room:     roomData.name,
+      passcode: roomData.passcode,
     });
   };
 

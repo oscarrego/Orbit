@@ -190,7 +190,59 @@ def handle_connect():
     print(f"✅ connect: {request.sid}")
 
 # --------------------------------------------------
-# JOIN ROOM
+# CREATE ROOM  (creation only — never joins)
+# Emits: room_created | create_room_error
+# --------------------------------------------------
+@socketio.on("create_room")
+def handle_create_room(data):
+    print(f"\n{'='*55}")
+    print(f"🔒 create_room: {data}")
+
+    room_name = (data.get("room") or "").strip()
+    passcode  = (data.get("passcode") or "").strip()
+    sid       = request.sid
+
+    print(f"   roomName='{room_name}'  passcode='{passcode}'")
+
+    # ── Basic validation ──────────────────────────
+    if not room_name:
+        emit("create_room_error", {"message": "Room name is required"})
+        return
+    if not passcode:
+        emit("create_room_error", {"message": "Passcode is required"})
+        return
+
+    # ── Uniqueness check — BLOCK if already exists ─
+    existing = get_room(room_name)
+    if existing:
+        print(f"   ❌ Room '{room_name}' already exists — rejecting creation")
+        emit("create_room_error", {"message": "Room name already in use"})
+        return
+
+    # ── Insert new room ───────────────────────────
+    new_doc, err = db_create_room(room_name, passcode, sid)
+    if err:
+        print(f"   ❌ db_create_room error: {err}")
+        emit("create_room_error", {"message": f"Could not create room: {err}"})
+        return
+
+    print(f"   ✅ Room '{room_name}' created — now joining socket room")
+
+    # ── Join the socket room immediately ──────────
+    old = socket_to_room.get(sid)
+    if old:
+        leave_room(old)
+    join_room(room_name)
+    socket_to_room[sid] = room_name
+
+    emit("load_messages", [])           # new room — no messages yet
+    emit("room_created", {"room": room_name})
+    print(f"{'='*55}\n")
+
+
+# --------------------------------------------------
+# JOIN ROOM  (join only — never creates)
+# Emits: room_joined | room_error
 # --------------------------------------------------
 @socketio.on("join_room")
 def handle_join(data):
@@ -205,33 +257,26 @@ def handle_join(data):
     print(f"   room='{room}'  passcode='{passcode}'  is_private={is_private}")
 
     # --------------------------------------------------
-    # PRIVATE ROOM AUTH
+    # PRIVATE ROOM — join only, never create
     # --------------------------------------------------
     if is_private:
         existing = get_room(room)
+        if not existing:
+            # Room does not exist — refuse (creation is a separate flow)
+            print(f"   ❌ Private room '{room}' not found")
+            emit("room_error", {"message": "Room does not exist"})
+            return
 
-        if existing:
-            # Room exists — verify passcode
-            stored = existing.get("passcode", "")
-            print(f"   Passcode check: stored='{stored}'  given='{passcode}'  match={stored == passcode}")
-            if stored != passcode:
-                emit("room_error", {"message": "Invalid room passcode"})
-                return
-            print("   ✅ Passcode correct — joining existing private room")
-
-        else:
-            # Room is new — create it
-            if not passcode:
-                emit("room_error", {"message": "Passcode is required"})
-                return
-
-            new_doc, err = db_create_room(room, passcode, sid)
-            if err:
-                emit("room_error", {"message": f"Could not create room: {err}"})
-                return
+        # Room exists — verify passcode
+        stored = existing.get("passcode", "")
+        print(f"   Passcode check: stored='{stored}'  given='{passcode}'  match={stored == passcode}")
+        if stored != passcode:
+            emit("room_error", {"message": "Invalid room passcode"})
+            return
+        print("   ✅ Passcode correct")
 
     else:
-        # Public join — block if the name is a private room
+        # Public join — block if the name belongs to a private room
         existing = get_room(room)
         if existing:
             emit("room_error", {"message": "That room is private. Use a passcode to join."})
