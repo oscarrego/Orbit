@@ -94,6 +94,7 @@ socketio = SocketIO(
     engineio_logger=True,
 )
 
+
 # --------------------------------------------------
 # In-memory session state  (ephemeral — NOT for auth)
 # --------------------------------------------------
