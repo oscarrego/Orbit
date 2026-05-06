@@ -45,7 +45,8 @@ function App() {
 
   // 🔑 Join-room passcode modal state
   const [joinModal, setJoinModal] = useState(null);  // null | { roomName, loading, error }
-  const joinModalRef = useRef(null); // keep latest modal state for socket callbacks
+  const joinModalRef  = useRef(null); // keep latest modal state for socket callbacks
+  const pendingJoinRef = useRef(null); // { isPrivate: bool } — tracks the in-flight join_room emit
   
   // 💬 Chat State
   const [chatMessages, setChatMessages] = useState([]);
@@ -142,18 +143,19 @@ function App() {
     // ✅ ROOM JOINED CONFIRMATION
     socket.on("room_joined", ({ room }) => {
       console.log("✅ Joined room:", room);
-      // Commit room state — works for both public and private joins
+
+      const wasPrivate = pendingJoinRef.current?.isPrivate ?? false;
+      pendingJoinRef.current = null; // clear pending
+
+      // Commit room state
       setCurrentRoom(room);
       localStorage.setItem("roomId", room);
+      setChatMessages([]);         // always clear on room switch
+      setIsRoomPrivate(wasPrivate);
 
+      // Close passcode modal if it was open
       if (joinModalRef.current) {
-        // Private join — came via passcode modal
-        setIsRoomPrivate(true);
-        setChatMessages([]);
         setJoinModal(null);
-      } else {
-        // Public join
-        setIsRoomPrivate(false);
       }
 
       showToast({ message: `Joined room: ${room}`, type: "room" });
@@ -312,7 +314,7 @@ showToast({
 };
   // Directly join a public room (no passcode required)
   const doJoinPublic = useCallback((room) => {
-    setChatMessages([]);
+    pendingJoinRef.current = { isPrivate: false };
     localStorage.setItem("roomId", room);
     socket.emit("join_room", { room });
     setRoomInput("");
@@ -332,7 +334,7 @@ showToast({
     if (!joinModal) return;
     const { roomName } = joinModal;
     setJoinModal(prev => ({ ...prev, loading: true, error: null }));
-    // Don't update currentRoom yet — wait for server room_joined confirmation
+    pendingJoinRef.current = { isPrivate: true };
     socket.emit("join_room", { room: roomName, isPrivate: true, passcode });
   };
 
@@ -341,19 +343,19 @@ showToast({
   };
 
   const handleCreateRoom = (roomData) => {
-    // Close modal immediately; we'll confirm success/failure via socket events
+    // Close the creation modal immediately
     setShowCreateRoomModal(false);
 
+    console.log("🔒 Creating private room:", roomData.name, "passcode:", roomData.passcode);
+
+    // Set pending flag so room_joined knows this was a private join
+    pendingJoinRef.current = { isPrivate: true };
+
     socket.emit("join_room", {
-      room: roomData.name,
+      room:      roomData.name,
       isPrivate: roomData.isPrivate,
-      passcode: roomData.passcode   // ← must match backend key
+      passcode:  roomData.passcode,
     });
-    // Optimistic UI update — room_error will roll this back if denied
-    setChatMessages([]);
-    setCurrentRoom(roomData.name);
-    setIsRoomPrivate(roomData.isPrivate);
-    localStorage.setItem("roomId", roomData.name);
   };
 
   // 💬 Handle Send Message
