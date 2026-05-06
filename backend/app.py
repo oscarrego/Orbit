@@ -8,18 +8,34 @@ from flask_socketio import SocketIO, emit, join_room, leave_room
 import time
 from bson.objectid import ObjectId
 
-from pymongo import MongoClient
-from datetime import datetime, timedelta
+from pymongo import MongoClient, ASCENDING
+from pymongo.errors import DuplicateKeyError
+from datetime import datetime
 
+# --------------------------------------------------
+# DATABASE
+# --------------------------------------------------
 MONGO_URI = os.environ.get("MONGO_URI")
 
 client = MongoClient(MONGO_URI)
 db = client["orbit"]
-messages_collection = db["messages"]
 
-# 🔥 Create TTL index (automatically delete after 24 hours)
+messages_collection = db["messages"]
+rooms_collection    = db["rooms"]
+
+# TTL index: auto-delete messages after 24 hours
 messages_collection.create_index("createdAt", expireAfterSeconds=86400)
 
+# Unique index: prevents two rooms with the same name at the DB level
+rooms_collection.create_index(
+    [("roomName", ASCENDING)],
+    unique=True,
+    name="roomName_unique"
+)
+
+# --------------------------------------------------
+# FLASK + SOCKETIO
+# --------------------------------------------------
 app = Flask(__name__)
 CORS(app)
 
@@ -31,129 +47,154 @@ socketio = SocketIO(
     engineio_logger=True
 )
 
-# In-memory store
-private_rooms = {}
-users = {} # user_id -> user data
-socket_to_user = {} # sid -> user_id
-socket_to_room = {} # sid -> current room
+# --------------------------------------------------
+# In-memory session state (ephemeral — used only for
+# live user tracking and socket routing, NOT for room auth)
+# --------------------------------------------------
+users          = {}  # user_id -> user data
+socket_to_user = {}  # sid    -> user_id
+socket_to_room = {}  # sid    -> current room
 
-# ---------------------------
+# --------------------------------------------------
+# HELPERS
+# --------------------------------------------------
+def get_room(room_name):
+    """Fetch a room document from MongoDB by name. Returns None if not found."""
+    return rooms_collection.find_one({"roomName": room_name})
+
+
+def create_room(room_name, passcode, creator_sid):
+    """
+    Insert a new private room document.
+    Returns (doc, None) on success or (None, error_message) on failure.
+    """
+    doc = {
+        "roomName":  room_name,
+        "passcode":  passcode,
+        "creator":   creator_sid,
+        "createdAt": datetime.utcnow(),
+        "isPrivate": True,
+    }
+    try:
+        result = rooms_collection.insert_one(doc)
+        doc["_id"] = str(result.inserted_id)
+        return doc, None
+    except DuplicateKeyError:
+        # Race condition: room was created between our find_one and insert_one
+        return None, "Room already exists"
+    except Exception as e:
+        return None, str(e)
+
+# --------------------------------------------------
 # CONNECT
-# ---------------------------
+# --------------------------------------------------
 @socketio.on("connect")
 def connect():
-    print(f"Client connected: {request.sid}")
-    # Removed database loading - chat starts empty
+    print(f"✅ Client connected: {request.sid}")
 
-# ---------------------------
+# --------------------------------------------------
 # JOIN ROOM
-# ---------------------------
+# --------------------------------------------------
 @socketio.on("join_room")
 def handle_join(data):
-    print("ROOM DATA:", data)
+    print("📦 ROOM DATA:", data)
 
-    room = data.get("room", "Global")
-    passcode = data.get("passcode")
+    room       = (data.get("room") or "Global").strip()
+    passcode   = (data.get("passcode") or "").strip()
     is_private = data.get("isPrivate", False)
+    sid        = request.sid
 
-    sid = request.sid
-
-    # ---------------------------
-    # PRIVATE ROOM VALIDATION
-    # ---------------------------
+    # --------------------------------------------------
+    # PRIVATE ROOM AUTH — all state lives in MongoDB
+    # --------------------------------------------------
     if is_private:
+        existing = get_room(room)
 
-        if room in private_rooms:
-            # Room exists — verify passcode
-            if private_rooms[room]["passcode"] != passcode:
+        if existing:
+            # Room already exists — verify passcode
+            if existing["passcode"] != passcode:
                 emit("room_error", {"message": "Invalid room passcode"})
                 return
-            # Passcode matches — allow joining (fall through)
+            # Passcode correct — fall through to join
 
         else:
-            # Room does not exist yet — create it with this passcode
+            # Room is new — create it
             if not passcode:
                 emit("room_error", {"message": "Passcode is required to create a private room"})
                 return
-            private_rooms[room] = {"passcode": passcode}
-            print(f"Private room '{room}' created.")
+
+            _, err = create_room(room, passcode, sid)
+            if err:
+                emit("room_error", {"message": f"Could not create room: {err}"})
+                return
+
+            print(f"🔒 Private room '{room}' created in MongoDB.")
 
     else:
-        # Public room: if name collides with an existing private room, block it
-        if room in private_rooms:
+        # Public join: reject if a private room with this name already exists
+        existing = get_room(room)
+        if existing:
             emit("room_error", {"message": "That room is private. Use a passcode to join."})
             return
 
-    # ---------------------------
-    # LEAVE OLD ROOM
-    # ---------------------------
+    # --------------------------------------------------
+    # LEAVE OLD SOCKET ROOM
+    # --------------------------------------------------
     old_room = socket_to_room.get(sid)
-
     if old_room:
         leave_room(old_room)
 
-    # ---------------------------
-    # JOIN ROOM
-    # ---------------------------
+    # --------------------------------------------------
+    # JOIN SOCKET ROOM
+    # --------------------------------------------------
     join_room(room)
-
     socket_to_room[sid] = room
+    print(f"👤 Client {sid} joined room: {room}")
 
-    print(f"Client {sid} joined room: {room}")
-
-    # ---------------------------
-    # LOAD OLD MESSAGES
-    # ---------------------------
+    # --------------------------------------------------
+    # LOAD LAST 24 h OF MESSAGES
+    # --------------------------------------------------
     cutoff = time.time() - 86400
 
     messages = list(
         messages_collection.find({
-            "room": room,
+            "room":      room,
             "timestamp": {"$gt": cutoff}
         }).sort("timestamp", 1)
     )
 
     for msg in messages:
-
         msg["_id"] = str(msg["_id"])
-
-        if "createdAt" in msg:
-            msg.pop("createdAt")
-
-        if "seenBy" not in msg:
-            msg["seenBy"] = []
-
-        if "senderId" not in msg:
-            msg["senderId"] = "unknown"
+        msg.pop("createdAt", None)
+        msg.setdefault("seenBy", [])
+        msg.setdefault("senderId", "unknown")
 
     emit("load_messages", messages)
 
-    # Optional success event
-    emit("room_joined", {
-        "room": room
-    })
-# ---------------------------
+    # Server-side confirmation → frontend shows success toast
+    emit("room_joined", {"room": room})
+
+# --------------------------------------------------
 # DISCONNECT
-# ---------------------------
+# --------------------------------------------------
 @socketio.on("disconnect")
 def disconnect():
-    sid = request.sid
+    sid     = request.sid
     user_id = socket_to_user.get(sid)
     socket_to_room.pop(sid, None)
 
     if user_id:
         users.pop(user_id, None)
         socket_to_user.pop(sid, None)
-        print(f"User {user_id} disconnected")
+        print(f"🔌 User {user_id} disconnected")
     else:
-        print(f"Unknown client disconnected: {sid}")
+        print(f"🔌 Unknown client disconnected: {sid}")
 
-    # Always emit clean list
     socketio.emit("update_users", list(users.values()))
 
-# ---------------------------
+# --------------------------------------------------
 # LOCATION UPDATE
-# ---------------------------
+# --------------------------------------------------
 @socketio.on("send_location")
 def handle_location(data):
     user_id = data.get("id")
@@ -161,66 +202,57 @@ def handle_location(data):
         return
 
     sid = request.sid
-
-    # Store/update user in users dict
     users[user_id] = {
-        "id": user_id,
-        "name": data.get("name", "Unknown"),
-        "lat": data.get("lat"),
-        "lng": data.get("lng"),
-        "heading": data.get("heading", 0),
-        "timestamp": time.time()
+        "id":        user_id,
+        "name":      data.get("name", "Unknown"),
+        "lat":       data.get("lat"),
+        "lng":       data.get("lng"),
+        "heading":   data.get("heading", 0),
+        "timestamp": time.time(),
     }
-
-    # Map socket.id -> user_id
     socket_to_user[sid] = user_id
 
-    # Always emit clean list
     socketio.emit("update_users", list(users.values()))
 
-# ---------------------------
-# CHAT
-# ---------------------------
+# --------------------------------------------------
+# CHAT — SEND MESSAGE
+# --------------------------------------------------
 @socketio.on("send_message")
 def handle_message(data):
     print("📨 MESSAGE RECEIVED:", data)
 
-    user = data.get("user")
-    text = data.get("text", "").strip()
-    room = data.get("room", "Global")
+    user      = data.get("user")
+    text      = data.get("text", "").strip()
+    room      = data.get("room", "Global")
     sender_id = data.get("senderId")
 
     if not user or not text or not sender_id:
-        print("❌ INVALID MESSAGE")
+        print("❌ INVALID MESSAGE — missing fields")
         return
 
     message = {
-        "senderId": sender_id,
-        "user": user,
-        "text": text,
-        "room": room,
+        "senderId":  sender_id,
+        "user":      user,
+        "text":      text,
+        "room":      room,
         "timestamp": time.time(),
-        "createdAt": datetime.utcnow(), # 🔥 Field for MongoDB TTL index
-        "seenBy": [sender_id]
+        "createdAt": datetime.utcnow(),  # drives TTL index
+        "seenBy":    [sender_id],
     }
 
     result = messages_collection.insert_one(message)
+    message.pop("createdAt")  # datetime is not JSON-serialisable
 
-    # Remove createdAt before sending back (datetime not JSON serializable)
-    message.pop("createdAt")
-
-
-    message_to_send = {
-        **message,
-        "_id": str(result.inserted_id)
-    }
-
+    message_to_send = {**message, "_id": str(result.inserted_id)}
     socketio.emit("receive_message", message_to_send, room=room, include_self=False)
 
+# --------------------------------------------------
+# CHAT — MESSAGE SEEN
+# --------------------------------------------------
 @socketio.on("message_seen")
 def handle_message_seen(data):
     message_id = data.get("messageId")
-    user_id = data.get("userId")
+    user_id    = data.get("userId")
 
     if not message_id or not user_id:
         return
@@ -233,22 +265,24 @@ def handle_message_seen(data):
     updated_msg = messages_collection.find_one({"_id": ObjectId(message_id)})
     if updated_msg:
         updated_msg["_id"] = str(updated_msg["_id"])
+        updated_msg.pop("createdAt", None)
         socketio.emit("message_updated", updated_msg, room=updated_msg["room"])
-# ---------------------------
-# SOS ALERT
-# ---------------------------
+
+# --------------------------------------------------
+# SOS
+# --------------------------------------------------
 @socketio.on("sos_alert")
 def handle_sos(data):
-    print("SOS ALERT:", data)
-    socketio.emit("sos_alert", data) # Global broadcast to all
-    
+    print("🚨 SOS ALERT:", data)
+    socketio.emit("sos_alert", data)
+
 @socketio.on("sos_cancel")
 def handle_sos_cancel(data):
-    print("SOS CANCEL:", data)
-    socketio.emit("sos_cancel", data) # Global broadcast to all
+    print("🔕 SOS CANCEL:", data)
+    socketio.emit("sos_cancel", data)
 
-# ---------------------------
-# RUN SERVER
-# ---------------------------
+# --------------------------------------------------
+# RUN
+# --------------------------------------------------
 if __name__ == "__main__":
     socketio.run(app, host="0.0.0.0", port=5000)
