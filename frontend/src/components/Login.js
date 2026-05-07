@@ -1,186 +1,171 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
-import { Stars, Float, Sphere, Sparkles } from '@react-three/drei';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { Stars, Float, Sphere, Sparkles, Instances, Instance } from '@react-three/drei';
 import * as THREE from 'three';
 import { motion } from 'framer-motion';
 import Lenis from 'lenis';
-import { Globe2, Activity, ShieldAlert, Crosshair, Fingerprint, MapPin, RadioReceiver, Network, UserPlus } from 'lucide-react';
+import { Aperture, Activity, ShieldAlert, Crosshair, Fingerprint, MapPin, RadioReceiver, Network, Radar } from 'lucide-react';
 import './Login.css';
 
 // --- GLOBAL SCROLL STATE FOR 3D ---
 const scrollState = { current: 0 };
+const mouseState = { x: 0, y: 0 };
 
 // --- 3D COMPONENTS ---
 
-const DigitalEarth = () => {
-  const earthRef = useRef();
-  const wireframeRef = useRef();
-  const ringRef = useRef();
-  const pulseRef = useRef();
-
-  const uniforms = useMemo(() => ({
+// Custom shader for the accretion disk with noise and swirling energy
+const DiskMaterial = new THREE.ShaderMaterial({
+  uniforms: {
     time: { value: 0 },
-  }), []);
+    colorCore: { value: new THREE.Color('#ffffff') },
+    colorMid: { value: new THREE.Color('#aaaaaa') },
+    colorOuter: { value: new THREE.Color('#222222') },
+    isSOS: { value: 0.0 },
+    sosColor: { value: new THREE.Color('#ff003c') }
+  },
+  transparent: true,
+  side: THREE.DoubleSide,
+  blending: THREE.AdditiveBlending,
+  depthWrite: false,
+  vertexShader: `
+    varying vec2 vUv;
+    varying vec3 vPos;
+    void main() {
+      vUv = uv;
+      vPos = position;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `,
+  fragmentShader: `
+    uniform float time;
+    uniform vec3 colorCore;
+    uniform vec3 colorMid;
+    uniform vec3 colorOuter;
+    uniform float isSOS;
+    uniform vec3 sosColor;
+    varying vec2 vUv;
+    varying vec3 vPos;
 
-  useFrame((state, delta) => {
-    const p = scrollState.current; // 0 to 1 over entire page
-    uniforms.time.value = state.clock.elapsedTime;
-    
-    const rotSpeed = 0.05 + (p * 0.1); 
-    
-    // Determine target positions based on scroll sections (5 sections roughly 0.2 each)
-    let targetX = 0, targetY = 0, targetZ = 0, targetTilt = 0;
-    let isSOS = false;
-    let isNearby = false;
-
-    if (p < 0.2) {
-      // Sec 1: Hero
-      targetX = 0; targetY = 0; targetZ = 0; targetTilt = p * Math.PI * 0.2;
-    } else if (p >= 0.2 && p < 0.4) {
-      // Sec 2: Presence (UI on right, Earth on left)
-      targetX = -1.5; targetY = 0; targetZ = 1.5; targetTilt = Math.PI * 0.1;
-    } else if (p >= 0.4 && p < 0.6) {
-      // Sec 3: Nearby Users (UI on left, Earth on right)
-      targetX = 1.5; targetY = 0; targetZ = 1.8; targetTilt = -Math.PI * 0.1;
-      isNearby = true;
-    } else if (p >= 0.6 && p < 0.8) {
-      // Sec 4: SOS (Centered, intense)
-      targetX = 0; targetY = 0; targetZ = 1.0; targetTilt = Math.PI * 0.2;
-      isSOS = true;
-    } else {
-      // Sec 5: Login (Top down view)
-      targetX = 0; targetY = 1.8; targetZ = 2.0; targetTilt = Math.PI * 0.45;
+    // Simple 2D noise
+    float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
+    float noise(vec2 p) {
+      vec2 i = floor(p);
+      vec2 f = fract(p);
+      f = f * f * (3.0 - 2.0 * f);
+      return mix(mix(hash(i + vec2(0.0, 0.0)), hash(i + vec2(1.0, 0.0)), f.x),
+                 mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
     }
 
-    if (earthRef.current && wireframeRef.current) {
-      // Smooth interpolation for camera/earth moves
-      earthRef.current.position.x = THREE.MathUtils.lerp(earthRef.current.position.x, targetX, 0.05);
-      earthRef.current.position.y = THREE.MathUtils.lerp(earthRef.current.position.y, targetY, 0.05);
-      earthRef.current.position.z = THREE.MathUtils.lerp(earthRef.current.position.z, targetZ, 0.05);
+    void main() {
+      vec2 center = vec2(0.0, 0.0);
+      vec2 pos = vPos.xy; // The disk is on XY plane before rotation, wait, ringGeometry is on XY.
+      float dist = length(pos);
       
-      earthRef.current.rotation.x = THREE.MathUtils.lerp(earthRef.current.rotation.x, targetTilt, 0.05);
-      earthRef.current.rotation.y += delta * rotSpeed;
-      
-      wireframeRef.current.position.copy(earthRef.current.position);
-      wireframeRef.current.rotation.copy(earthRef.current.rotation);
-    }
-    
-    // Color interpolation
-    const targetWireframeColor = isSOS ? '#ff003c' : (isNearby ? '#00ff88' : '#0088ff');
-    wireframeRef.current.material.color.lerp(new THREE.Color(targetWireframeColor), 0.05);
-    wireframeRef.current.material.opacity = isSOS ? 0.3 : 0.15;
+      if(dist < 2.0 || dist > 8.0) discard;
 
-    if (ringRef.current) {
-      ringRef.current.position.copy(earthRef.current.position);
-      const isFinal = p >= 0.8;
-      const targetScale = isSOS ? 1.8 : (isFinal ? 2.5 : (isNearby ? 1.4 : 1.0));
-      ringRef.current.scale.setScalar(THREE.MathUtils.lerp(ringRef.current.scale.x, targetScale, 0.05));
+      // Swirling angles
+      float angle = atan(pos.y, pos.x);
       
-      const ringColor = isSOS ? '#ff003c' : (isFinal ? '#ffffff' : (isNearby ? '#00ff88' : '#00bfff'));
-      ringRef.current.material.color.lerp(new THREE.Color(ringColor), 0.05);
-      ringRef.current.material.opacity = isFinal ? 0.2 : (isSOS ? 0.6 : 0.15);
-    }
-
-    // Pulse Effect for SOS
-    if (pulseRef.current) {
-      pulseRef.current.position.copy(earthRef.current.position);
-      if (isSOS) {
-        pulseRef.current.scale.setScalar(pulseRef.current.scale.x + delta * 2.5);
-        pulseRef.current.material.opacity -= delta * 1.0;
-        if (pulseRef.current.scale.x > 4) {
-          pulseRef.current.scale.setScalar(2);
-          pulseRef.current.material.opacity = 0.8;
-        }
+      // Dynamic noise
+      float n = noise(vec2(angle * 4.0 - time * 2.0, dist * 3.0 - time));
+      float n2 = noise(vec2(angle * 8.0 + time, dist * 6.0));
+      
+      float intensity = (n * 0.6 + n2 * 0.4);
+      
+      vec3 finalColor = colorOuter;
+      if (dist < 4.0) {
+        float t = (dist - 2.0) / 2.0; // 0 to 1
+        finalColor = mix(colorCore, colorMid, t);
       } else {
-        pulseRef.current.scale.setScalar(2);
-        pulseRef.current.material.opacity = 0;
+        float t = (dist - 4.0) / 4.0; // 0 to 1
+        finalColor = mix(colorMid, colorOuter, t);
       }
+      
+      // Fade edges
+      float alpha = 1.0;
+      if (dist > 6.0) alpha = 1.0 - (dist - 6.0) / 2.0;
+      if (dist < 2.1) alpha = (dist - 2.0) / 0.1;
+
+      // Rings and bands
+      float rings = sin(dist * 10.0 - time * 4.0) * 0.5 + 0.5;
+      
+      // Combine
+      alpha *= (intensity * 0.5 + rings * 0.5) * 0.8;
+
+      // SOS Overrides
+      finalColor = mix(finalColor, sosColor, isSOS * 0.6);
+      alpha = mix(alpha, alpha * 1.5, isSOS);
+
+      gl_FragColor = vec4(finalColor, alpha);
     }
-  });
+  `
+});
 
-  return (
-    <group>
-      <Sphere ref={earthRef} args={[2, 64, 64]}>
-        <meshBasicMaterial color="#010103" />
-      </Sphere>
-      <Sphere ref={wireframeRef} args={[2.02, 32, 32]}>
-        <meshBasicMaterial color="#0088ff" wireframe transparent opacity={0.15} blending={THREE.AdditiveBlending} />
-      </Sphere>
-      <mesh ref={ringRef} rotation={[Math.PI / 2.1, 0, 0]}>
-        <ringGeometry args={[2.4, 2.42, 128]} />
-        <meshBasicMaterial color="#00bfff" transparent opacity={0.15} side={THREE.DoubleSide} blending={THREE.AdditiveBlending} />
-      </mesh>
-      <Sphere ref={pulseRef} args={[1, 32, 32]}>
-        <meshBasicMaterial color="#ff003c" transparent opacity={0} wireframe blending={THREE.AdditiveBlending} />
-      </Sphere>
-    </group>
-  );
-};
-
-const NetworkNodes = () => {
-  const nodesRef = useRef();
-  const count = 400;
+const AccretionParticles = () => {
+  const particlesRef = useRef();
+  const count = 12000;
   
-  const [positions, phases, speeds] = useMemo(() => {
+  const [positions, phases, speeds, radii, offsets] = useMemo(() => {
     const pos = new Float32Array(count * 3);
     const ph = new Float32Array(count);
     const sp = new Float32Array(count);
+    const rad = new Float32Array(count);
+    const off = new Float32Array(count);
     for (let i = 0; i < count; i++) {
-      const phi = Math.acos(-1 + (2 * i) / count);
-      const theta = Math.sqrt(count * Math.PI) * phi;
-      const r = 2.05 + Math.random() * 0.1; 
+      // Concentrate near center, spread out further
+      const radius = 2.05 + Math.pow(Math.random(), 2) * 8.0; 
+      const theta = Math.random() * Math.PI * 2;
       
-      pos[i * 3] = r * Math.cos(theta) * Math.sin(phi);
-      pos[i * 3 + 1] = r * Math.sin(theta) * Math.sin(phi);
-      pos[i * 3 + 2] = r * Math.cos(phi);
+      // Y distortion creates the "thickness" of the disk, pinched at the center
+      const yDistortion = (Math.random() - 0.5) * (0.05 + Math.pow((radius - 2.05) * 0.2, 1.5)); 
+      
+      pos[i * 3] = radius * Math.cos(theta);
+      pos[i * 3 + 1] = yDistortion;
+      pos[i * 3 + 2] = radius * Math.sin(theta);
       
       ph[i] = Math.random() * Math.PI * 2;
-      sp[i] = 0.5 + Math.random() * 2;
+      // Closer particles move much faster
+      sp[i] = (25.0 / (radius * radius)) * (0.8 + Math.random() * 0.4);
+      rad[i] = radius;
+      off[i] = Math.random();
     }
-    return [pos, ph, sp];
+    return [pos, ph, sp, rad, off];
   }, []);
 
   const uniforms = useMemo(() => ({
     time: { value: 0 },
-    colorNormal: { value: new THREE.Color('#00e5ff') },
-    colorSOS: { value: new THREE.Color('#ff003c') },
-    colorNearby: { value: new THREE.Color('#00ff88') },
-    mixRatioSOS: { value: 0.0 }, 
-    mixRatioNearby: { value: 0.0 },
+    scrollPos: { value: 0 },
+    colorCore: { value: new THREE.Color('#ffffff') }, 
+    colorMid: { value: new THREE.Color('#bbbbbb') },  
+    colorOuter: { value: new THREE.Color('#222222') },
+    colorSOS: { value: new THREE.Color('#ff003c') },  
+    isSOS: { value: 0.0 }, 
   }), []);
 
-  useFrame((state, delta) => {
+  useFrame((state) => {
     const p = scrollState.current;
     uniforms.time.value = state.clock.elapsedTime;
+    uniforms.scrollPos.value = p;
     
-    let targetX = 0, targetY = 0, targetZ = 0, targetTilt = 0;
-    if (p < 0.2) { targetTilt = p * Math.PI * 0.2; }
-    else if (p >= 0.2 && p < 0.4) { targetX = -1.5; targetZ = 1.5; targetTilt = Math.PI * 0.1; }
-    else if (p >= 0.4 && p < 0.6) { targetX = 1.5; targetZ = 1.8; targetTilt = -Math.PI * 0.1; }
-    else if (p >= 0.6 && p < 0.8) { targetZ = 1.0; targetTilt = Math.PI * 0.2; }
-    else { targetY = 1.8; targetZ = 2.0; targetTilt = Math.PI * 0.45; }
-
-    if (nodesRef.current) {
-      nodesRef.current.position.x = THREE.MathUtils.lerp(nodesRef.current.position.x, targetX, 0.05);
-      nodesRef.current.position.y = THREE.MathUtils.lerp(nodesRef.current.position.y, targetY, 0.05);
-      nodesRef.current.position.z = THREE.MathUtils.lerp(nodesRef.current.position.z, targetZ, 0.05);
-      nodesRef.current.rotation.x = THREE.MathUtils.lerp(nodesRef.current.rotation.x, targetTilt, 0.05);
-      nodesRef.current.rotation.y += delta * (0.05 + (p * 0.1)); 
+    // Add rotation offset to whole system based on scroll for dramatic spin
+    if (particlesRef.current) {
+      particlesRef.current.rotation.y = -state.clock.elapsedTime * 0.05 - (p * Math.PI * 2);
+      // Slight wobble
+      particlesRef.current.rotation.z = Math.sin(state.clock.elapsedTime * 0.2) * 0.05;
     }
 
     const isSOS = p >= 0.6 && p < 0.8;
-    const isNearby = p >= 0.4 && p < 0.6;
-    
-    uniforms.mixRatioSOS.value = THREE.MathUtils.lerp(uniforms.mixRatioSOS.value, isSOS ? 1.0 : 0.0, 0.05);
-    uniforms.mixRatioNearby.value = THREE.MathUtils.lerp(uniforms.mixRatioNearby.value, isNearby ? 1.0 : 0.0, 0.05);
+    uniforms.isSOS.value = THREE.MathUtils.lerp(uniforms.isSOS.value, isSOS ? 1.0 : 0.0, 0.05);
   });
 
   return (
-    <points ref={nodesRef}>
+    <points ref={particlesRef}>
       <bufferGeometry>
         <bufferAttribute attach="attributes-position" count={count} array={positions} itemSize={3} />
         <bufferAttribute attach="attributes-phase" count={count} array={phases} itemSize={1} />
         <bufferAttribute attach="attributes-speed" count={count} array={speeds} itemSize={1} />
+        <bufferAttribute attach="attributes-radius" count={count} array={radii} itemSize={1} />
+        <bufferAttribute attach="attributes-offset" count={count} array={offsets} itemSize={1} />
       </bufferGeometry>
       <shaderMaterial 
         transparent
@@ -190,31 +175,79 @@ const NetworkNodes = () => {
         vertexShader={`
           attribute float phase;
           attribute float speed;
+          attribute float radius;
+          attribute float offset;
           varying float vAlpha;
+          varying float vRadius;
           uniform float time;
+          uniform float scrollPos;
+          uniform float isSOS;
+          
           void main() {
-            vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+            // Speed up everything as you scroll down
+            float currentSpeed = speed * (1.0 + scrollPos * 2.0);
+            float angle = time * currentSpeed + phase;
+            
+            vec3 pos = position;
+            
+            // Warp effect: bend Z and Y based on scroll and radius
+            float warp = scrollPos * (10.0 / radius);
+            
+            pos.x = radius * cos(angle);
+            pos.z = radius * sin(angle);
+            
+            // SOS turbulence
+            if (isSOS > 0.0) {
+                pos.y += sin(angle * 10.0 + time * 10.0) * isSOS * 0.2 * (radius * 0.1);
+            }
+
+            vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
             gl_Position = projectionMatrix * mvPosition;
-            gl_PointSize = (14.0 / -mvPosition.z);
-            vAlpha = 0.3 + 0.7 * sin(time * speed + phase);
+            
+            // Size scaling based on perspective and distance
+            float size = (30.0 / -mvPosition.z) * (1.0 / (radius * 0.2));
+            // Add pulse
+            size *= 1.0 + 0.3 * sin(time * 5.0 + phase);
+            gl_PointSize = clamp(size, 1.0, 8.0);
+            
+            vAlpha = 0.4 + 0.6 * sin(time * currentSpeed * 2.0 + offset * 10.0);
+            vRadius = radius;
           }
         `}
         fragmentShader={`
-          uniform vec3 colorNormal;
+          uniform vec3 colorCore;
+          uniform vec3 colorMid;
+          uniform vec3 colorOuter;
           uniform vec3 colorSOS;
-          uniform vec3 colorNearby;
-          uniform float mixRatioSOS;
-          uniform float mixRatioNearby;
+          uniform float isSOS;
           varying float vAlpha;
+          varying float vRadius;
           void main() {
             vec2 xy = gl_PointCoord.xy - vec2(0.5);
             float ll = length(xy);
             if (ll > 0.5) discard;
             
-            vec3 finalColor = mix(colorNormal, colorNearby, mixRatioNearby);
-            finalColor = mix(finalColor, colorSOS, mixRatioSOS);
+            vec3 color = colorOuter;
+            if (vRadius < 4.0) {
+               float t = (vRadius - 2.05) / (4.0 - 2.05);
+               color = mix(colorCore, colorMid, t);
+            } else {
+               float t = (vRadius - 4.0) / (10.0 - 4.0);
+               color = mix(colorMid, colorOuter, t);
+            }
+
+            // Highlight
+            if (vRadius < 2.5) {
+               color = mix(color, vec3(1.0, 0.95, 0.9), 0.4); 
+            }
+
+            // SOS override
+            color = mix(color, colorSOS, isSOS * 0.8);
             
-            gl_FragColor = vec4(finalColor, vAlpha * pow(1.0 - (ll * 2.0), 2.0));
+            // Fade out
+            float edgeFade = 1.0 - smoothstep(7.0, 10.0, vRadius);
+
+            gl_FragColor = vec4(color, vAlpha * edgeFade * pow(1.0 - (ll * 2.0), 2.5));
           }
         `}
       />
@@ -222,16 +255,205 @@ const NetworkNodes = () => {
   );
 };
 
+// Orbiting Cinematic Debris
+const CinematicDebris = () => {
+  const count = 150;
+  const meshRef = useRef();
+
+  const dummy = useMemo(() => new THREE.Object3D(), []);
+  
+  const debrisData = useMemo(() => {
+    return new Array(count).fill().map(() => {
+      const radius = 5.0 + Math.random() * 15.0;
+      const angle = Math.random() * Math.PI * 2;
+      const speed = (2.0 / radius) * (Math.random() > 0.5 ? 1 : -1);
+      const yOffset = (Math.random() - 0.5) * 4.0;
+      const scale = 0.02 + Math.random() * 0.08;
+      const rotSpeed = [Math.random() * 0.02, Math.random() * 0.02, Math.random() * 0.02];
+      return { radius, angle, speed, yOffset, scale, rotSpeed, currentRot: [0,0,0] };
+    });
+  }, [count]);
+
+  useFrame((state) => {
+    const p = scrollState.current;
+    
+    debrisData.forEach((d, i) => {
+      d.angle += d.speed * state.delta * (1.0 + p * 2.0); // speeds up on scroll
+      d.currentRot[0] += d.rotSpeed[0];
+      d.currentRot[1] += d.rotSpeed[1];
+      d.currentRot[2] += d.rotSpeed[2];
+
+      const x = d.radius * Math.cos(d.angle);
+      const z = d.radius * Math.sin(d.angle);
+      // Pulled inward slightly based on scroll
+      const pull = p * (d.radius * 0.3);
+
+      dummy.position.set(x * (1 - pull/d.radius), d.yOffset, z * (1 - pull/d.radius));
+      dummy.rotation.set(...d.currentRot);
+      dummy.scale.setScalar(d.scale);
+      dummy.updateMatrix();
+      meshRef.current.setMatrixAt(i, dummy.matrix);
+    });
+    meshRef.current.instanceMatrix.needsUpdate = true;
+  });
+
+  return (
+    <instancedMesh ref={meshRef} args={[null, null, count]}>
+      <tetrahedronGeometry args={[1, 0]} />
+      <meshStandardMaterial color="#444444" roughness={0.8} metalness={0.2} />
+    </instancedMesh>
+  );
+};
+
+// Atmospheric Gas Volumetrics
+const AtmosphericGas = () => {
+  const gasRef = useRef();
+
+  useFrame((state, delta) => {
+    if (gasRef.current) {
+      gasRef.current.rotation.y += delta * 0.05;
+      gasRef.current.rotation.x += delta * 0.02;
+    }
+  });
+
+  return (
+    <group ref={gasRef}>
+      <Sphere args={[2.5, 32, 32]}>
+        <meshBasicMaterial color="#ffffff" transparent opacity={0.02} blending={THREE.AdditiveBlending} depthWrite={false}/>
+      </Sphere>
+      <Sphere args={[4.0, 32, 32]}>
+        <meshBasicMaterial color="#aaaaaa" transparent opacity={0.01} blending={THREE.AdditiveBlending} depthWrite={false}/>
+      </Sphere>
+      <Sphere args={[6.0, 32, 32]}>
+        <meshBasicMaterial color="#333333" transparent opacity={0.005} blending={THREE.AdditiveBlending} depthWrite={false}/>
+      </Sphere>
+    </group>
+  );
+}
+
+const BlackHole = () => {
+  const bhRef = useRef();
+
+  useFrame((state) => {
+    const p = scrollState.current;
+    
+    // Apply shader time
+    DiskMaterial.uniforms.time.value = state.clock.elapsedTime;
+    const isSOS = p >= 0.6 && p < 0.8;
+    DiskMaterial.uniforms.isSOS.value = THREE.MathUtils.lerp(DiskMaterial.uniforms.isSOS.value, isSOS ? 1.0 : 0.0, 0.05);
+
+    // Black Hole Object transforms
+    let targetX = 0, targetY = 0, targetTiltX = 0, targetTiltY = 0;
+
+    // Drift based on mouse
+    const mouseDriftX = mouseState.x * 0.5;
+    const mouseDriftY = mouseState.y * 0.5;
+
+    if (p < 0.2) {
+      // Sec 1: Distant black hole
+      targetX = 0; targetY = 0.5; targetTiltX = Math.PI * 0.15; targetTiltY = Math.PI * 0.1;
+    } else if (p >= 0.2 && p < 0.4) {
+      // Sec 2: Presence - Shifts Left
+      targetX = -3.5; targetY = 0; targetTiltX = Math.PI * 0.2; targetTiltY = Math.PI * 0.15;
+    } else if (p >= 0.4 && p < 0.6) {
+      // Sec 3: Gravitational field - Shifts Right, steep angle
+      targetX = 3.5; targetY = 0; targetTiltX = Math.PI * 0.25; targetTiltY = -Math.PI * 0.15;
+    } else if (p >= 0.6 && p < 0.8) {
+      // Sec 4: SOS pulses - Center, intense angle
+      targetX = 0; targetY = 0; targetTiltX = Math.PI * 0.35; targetTiltY = 0;
+    } else {
+      // Sec 5: Terminal - Directly underneath / overhead
+      targetX = 0; targetY = 2.0; targetTiltX = Math.PI * 0.45; targetTiltY = 0;
+    }
+
+    if (bhRef.current) {
+      bhRef.current.position.x = THREE.MathUtils.lerp(bhRef.current.position.x, targetX + mouseDriftX, 0.02);
+      bhRef.current.position.y = THREE.MathUtils.lerp(bhRef.current.position.y, targetY + mouseDriftY, 0.02);
+      
+      bhRef.current.rotation.x = THREE.MathUtils.lerp(bhRef.current.rotation.x, targetTiltX, 0.02);
+      bhRef.current.rotation.y = THREE.MathUtils.lerp(bhRef.current.rotation.y, targetTiltY, 0.02);
+    }
+  });
+
+  return (
+    <group ref={bhRef}>
+      {/* Event Horizon */}
+      <Sphere args={[2, 64, 64]}>
+        <meshBasicMaterial color="#000000" />
+      </Sphere>
+
+      {/* Deep Singularity glow inside */}
+      <Sphere args={[1.9, 32, 32]}>
+         <meshBasicMaterial color="#000000" depthTest={false} />
+      </Sphere>
+      
+      {/* Photon Ring */}
+      <mesh rotation={[Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[2.0, 2.05, 128]} />
+        <meshBasicMaterial color="#ffffff" transparent opacity={0.8} side={THREE.DoubleSide} blending={THREE.AdditiveBlending} depthWrite={false} />
+      </mesh>
+
+      {/* Animated Accretion Disk Base */}
+      <mesh rotation={[Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[2.05, 8.0, 128]} />
+        <primitive object={DiskMaterial} attach="material" />
+      </mesh>
+
+      <AtmosphericGas />
+      <AccretionParticles />
+      <CinematicDebris />
+    </group>
+  );
+};
+
+// Camera Controller to manage FOV and "Descent" Z-depth based on scroll
+const CameraController = () => {
+  const { camera } = useThree();
+
+  useFrame(() => {
+    const p = scrollState.current;
+    
+    // Z descent: start at 14, end at 4 (very close)
+    const targetZ = 16 - (p * 12);
+    // FOV shift: start narrow, get wide as we approach for distorted warp effect
+    const targetFOV = 40 + (p * 30);
+
+    camera.position.z = THREE.MathUtils.lerp(camera.position.z, targetZ, 0.03);
+    camera.fov = THREE.MathUtils.lerp(camera.fov, targetFOV, 0.03);
+    camera.updateProjectionMatrix();
+
+    // Subtle camera shake on SOS
+    if (p >= 0.6 && p < 0.8) {
+      camera.position.x = (Math.random() - 0.5) * 0.05;
+      camera.position.y = (Math.random() - 0.5) * 0.05;
+    } else {
+      camera.position.x = THREE.MathUtils.lerp(camera.position.x, 0, 0.1);
+      camera.position.y = THREE.MathUtils.lerp(camera.position.y, 0, 0.1);
+    }
+  });
+  return null;
+};
+
 const BackgroundScene = () => {
   return (
-    <Canvas camera={{ position: [0, 0, 7], fov: 45 }}>
-      <color attach="background" args={['#010103']} />
-      <fog attach="fog" args={['#010103', 4, 18]} />
-      <Stars radius={100} depth={50} count={3000} factor={3} saturation={0} fade speed={0.5} />
-      <Sparkles count={500} scale={12} size={2} speed={0.2} opacity={0.1} color="#0088ff" />
-      <Float speed={1.5} rotationIntensity={0.05} floatIntensity={0.1}>
-        <DigitalEarth />
-        <NetworkNodes />
+    <Canvas camera={{ position: [0, 0, 16], fov: 40 }} gl={{ antialias: true, alpha: false }}>
+      <color attach="background" args={['#000000']} />
+      <fog attach="fog" args={['#000000', 5, 30]} />
+      <CameraController />
+      
+      {/* Lighting for debris */}
+      <ambientLight intensity={0.2} />
+      <pointLight position={[0, 0, 0]} intensity={2.0} distance={20} color="#ffffff" />
+      
+      {/* Background Starfield Warp */}
+      <group>
+        <Stars radius={200} depth={100} count={8000} factor={5} saturation={0} fade speed={0.5} />
+        {/* Layer of brighter cinematic dust */}
+        <Sparkles count={2000} scale={30} size={1.5} speed={0.2} opacity={0.15} color="#ffffff" />
+      </group>
+
+      <Float speed={0.5} rotationIntensity={0.01} floatIntensity={0.02}>
+        <BlackHole />
       </Float>
     </Canvas>
   );
@@ -246,10 +468,10 @@ const Login = ({ onLogin }) => {
   // Setup Lenis for Genuine Smooth Scrolling
   useEffect(() => {
     const lenis = new Lenis({
-      duration: 1.5,
+      duration: 2.0, // Smoother, heavier feel
       easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
       smooth: true,
-      wheelMultiplier: 1.0,
+      wheelMultiplier: 0.8, // Slightly heavier scroll
     });
 
     lenis.on('scroll', (e) => {
@@ -262,8 +484,16 @@ const Login = ({ onLogin }) => {
     };
     requestAnimationFrame(raf);
 
+    // Mouse tracker for parallax
+    const handleMouseMove = (e) => {
+      mouseState.x = (e.clientX / window.innerWidth) * 2 - 1;
+      mouseState.y = -(e.clientY / window.innerHeight) * 2 + 1;
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+
     return () => {
       lenis.destroy();
+      window.removeEventListener('mousemove', handleMouseMove);
     };
   }, []);
 
@@ -286,13 +516,13 @@ const Login = ({ onLogin }) => {
 
   // Animation variants for scroll reveals
   const revealUp = {
-    hidden: { opacity: 0, y: 80 },
-    visible: { opacity: 1, y: 0, transition: { duration: 1, ease: [0.16, 1, 0.3, 1] } }
+    hidden: { opacity: 0, y: 80, filter: 'blur(10px)' },
+    visible: { opacity: 1, y: 0, filter: 'blur(0px)', transition: { duration: 1.4, ease: [0.16, 1, 0.3, 1] } }
   };
 
   const revealStagger = {
     hidden: { opacity: 0 },
-    visible: { opacity: 1, transition: { staggerChildren: 0.2 } }
+    visible: { opacity: 1, transition: { staggerChildren: 0.4 } }
   };
 
   return (
@@ -316,17 +546,17 @@ const Login = ({ onLogin }) => {
             viewport={{ once: false, margin: "-10%" }}
           >
             <motion.div variants={revealUp} className="badge-glow">
-              <Globe2 size={14} className="inline-icon" />
-              <span>ORBIT PLANETARY NETWORK</span>
+              <Aperture size={12} className="inline-icon" />
+              <span>ORBITAL SYNCHRONIZATION</span>
             </motion.div>
-            <motion.h1 variants={revealUp} className="hero-title">REALTIME HUMAN<br/><span className="text-gradient-blue">PRESENCE</span></motion.h1>
-            <motion.p variants={revealUp} className="hero-subtitle">The live social layer of Earth. Connect through proximity. Exist together in realtime space.</motion.p>
+            <motion.h1 variants={revealUp} className="hero-title">REALTIME <span className="bold-text">HUMAN</span><br/>PRESENCE</motion.h1>
+            <motion.p variants={revealUp} className="hero-subtitle">A cinematic network of human presence. Orbit synchronizes your relative position in spacetime. Exist together in realtime.</motion.p>
             
             <motion.div variants={revealUp} className="scroll-indicator">
               <div className="scroll-mouse">
                 <div className="scroll-wheel"></div>
               </div>
-              <span className="scroll-text">SCROLL TO EXPLORE</span>
+              <span className="scroll-text">INITIATE DESCENT</span>
             </motion.div>
           </motion.div>
         </section>
@@ -341,21 +571,21 @@ const Login = ({ onLogin }) => {
             viewport={{ once: false, margin: "-20%" }}
           >
             <div className="glass-panel">
-              <div className="panel-glow-effect blue"></div>
-              <div className="icon-wrapper blue-glow">
-                <Network size={28} />
+              <div className="panel-glow-effect"></div>
+              <div className="icon-wrapper">
+                <Network size={24} />
               </div>
               <h2 className="section-title">LIVE POSITIONAL<br/>SYNCHRONIZATION</h2>
               <p className="section-desc">Nodes representing humans. When you move, the network moves. Discover who is sharing your exact orbital space at this very second.</p>
               
               <div className="stats-grid">
                 <div className="stat-card">
-                  <MapPin size={16} className="stat-icon text-blue" />
+                  <MapPin size={16} className="stat-icon" />
                   <span className="stat-val">ACTIVE</span>
                   <span className="stat-label">Proximity Nodes</span>
                 </div>
                 <div className="stat-card">
-                  <Activity size={16} className="stat-icon text-blue" />
+                  <Activity size={16} className="stat-icon" />
                   <span className="stat-val">LIVE</span>
                   <span className="stat-label">Data Stream</span>
                 </div>
@@ -374,12 +604,12 @@ const Login = ({ onLogin }) => {
             viewport={{ once: false, margin: "-20%" }}
           >
             <div className="glass-panel">
-              <div className="panel-glow-effect green"></div>
-              <div className="icon-wrapper green-glow">
-                <UserPlus size={28} />
+              <div className="panel-glow-effect"></div>
+              <div className="icon-wrapper">
+                <Radar size={24} />
               </div>
-              <h2 className="section-title">REALTIME NEARBY<br/>DETECTION</h2>
-              <p className="section-desc">Distance matters. Orbit continuously scans your perimeter, revealing the network of human activity orbiting around your immediate location.</p>
+              <h2 className="section-title">GRAVITATIONAL<br/>PROXIMITY DETECTION</h2>
+              <p className="section-desc">Distance matters. Orbit continuously scans your perimeter, revealing the network of human activity bending around your immediate location.</p>
             </div>
           </motion.div>
         </section>
@@ -394,12 +624,12 @@ const Login = ({ onLogin }) => {
             viewport={{ once: false, margin: "-20%" }}
           >
             <div className="glass-panel massive-panel">
-              <div className="panel-glow-effect red"></div>
-              <div className="icon-wrapper red-glow large-icon">
-                <ShieldAlert size={40} />
+              <div className="panel-glow-effect"></div>
+              <div className="icon-wrapper large-icon">
+                <ShieldAlert size={32} />
               </div>
               <h2 className="section-title text-center">WHEN A SIGNAL IS SENT,<br/>THE NETWORK RESPONDS</h2>
-              <p className="section-desc text-center">Orbit is built for safety. Activate an SOS to instantly alert nearby users. The network converges, synchronizing live location data to coordinate a human response.</p>
+              <p className="section-desc text-center" style={{ maxWidth: '600px', margin: '0 auto 40px auto' }}>Orbit is built for safety. Activate an SOS to instantly alert nearby users. The network converges, synchronizing live location data to coordinate a human response.</p>
               
               <div className="alert-bar">
                 <div className="alert-pulse"></div>
@@ -418,10 +648,9 @@ const Login = ({ onLogin }) => {
             whileInView="visible"
             viewport={{ once: false, margin: "-10%" }}
           >
-            <h2 className="hero-title final-title" style={{ marginBottom: '60px' }}>ENTER <span className="text-gradient-white">ORBIT</span></h2>
+            <h2 className="hero-title final-title" style={{ marginBottom: '80px' }}>ENTER <span className="text-gradient-white">ORBIT</span></h2>
             
-            {/* The Integrated Username Terminal physically placed in the scroll flow */}
-            <div className="holographic-terminal">
+            <div className="singularity-terminal">
               <div className="terminal-header">
                 <Crosshair size={20} className="scanner-icon" />
                 <span>IDENTITY SYNCHRONIZATION</span>
@@ -458,7 +687,7 @@ const Login = ({ onLogin }) => {
                   disabled={username.length !== 5}
                   onClick={handleEnterClick}
                 >
-                  <Fingerprint size={18} className="btn-icon" />
+                  <Fingerprint size={16} className="btn-icon" />
                   <span>INITIALIZE ORBIT CONNECTION</span>
                 </button>
                 <div className="encryption-notice">
