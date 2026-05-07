@@ -505,8 +505,28 @@ backdrop-filter: blur(32px);
 
 /* --- RESPONSIVE --- */
 @media (max-width: 768px) {
+  .cinematic-section {
+    padding: 0 5%;
+    min-height: 100vh;
+  }
+
   .hero-title {
-    font-size: clamp(36px, 10vw, 56px);
+    font-size: clamp(36px, 10vw, 48px);
+  }
+  
+  .final-title {
+    font-size: clamp(40px, 12vw, 64px);
+    margin-bottom: 40px !important;
+  }
+
+  .hero-subtitle {
+    font-size: 14px;
+    margin-top: 24px;
+    padding: 0 10px;
+  }
+
+  .scroll-indicator {
+    margin-top: 60px;
   }
   
   .right-align, .left-align {
@@ -517,23 +537,110 @@ backdrop-filter: blur(32px);
   
   .glass-panel {
     padding: 40px 24px;
-    margin: 0 20px;
+    margin: 0;
     text-align: center;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .massive-panel {
+    padding: 48px 24px;
   }
   
+  .section-title {
+    font-size: 24px;
+    margin-bottom: 16px;
+  }
+
+  .section-desc {
+    font-size: 14px;
+    margin-bottom: 32px;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .stat-card {
+    padding: 20px;
+    align-items: center;
+  }
+
+  .stat-icon {
+    position: relative;
+    top: 0;
+    right: 0;
+    margin-bottom: 8px;
+  }
+
+  .alert-bar {
+    flex-direction: column;
+    padding: 16px;
+    text-align: center;
+    gap: 12px;
+  }
+
+  .alert-bar span {
+    font-size: 9px;
+    letter-spacing: 2px;
+    line-height: 1.4;
+  }
+
   .singularity-terminal {
-    padding: 48px 24px;
-    margin: 0 20px;
+    padding: 40px 24px;
+    margin: 0;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  
+  .terminal-header {
+    margin-bottom: 32px;
+  }
+  
+  .terminal-header span {
+    font-size: 9px;
+    letter-spacing: 3px;
+    text-align: center;
+  }
+
+  .input-wrapper {
+    gap: 12px;
+    margin-bottom: 24px;
   }
   
   .terminal-input {
-    font-size: 28px;
-    letter-spacing: 12px;
-    width: 200px;
-    padding-left: 12px;
+    font-size: 24px;
+    letter-spacing: 8px;
+    width: 180px;
+    padding-left: 8px;
+  }
+
+  .terminal-input::placeholder {
+    font-size: 12px;
+    letter-spacing: 4px;
   }
 
   .input-bracket {
     font-size: 24px;
+  }
+
+  .status-text {
+    font-size: 8px;
+    letter-spacing: 2px;
+  }
+
+  .action-container {
+    margin-top: 32px;
+  }
+
+  .sync-btn {
+    height: 56px;
+    font-size: 10px;
+    letter-spacing: 2px;
+    gap: 12px;
+  }
+
+  .encryption-notice {
+    margin-top: 24px;
   }
 }
