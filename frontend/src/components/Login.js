@@ -4,7 +4,7 @@ import { Stars, Float, Sphere, Sparkles, Instances, Instance } from '@react-thre
 import * as THREE from 'three';
 import { motion } from 'framer-motion';
 import Lenis from 'lenis';
-import { Aperture, Activity, ShieldAlert, Crosshair, Fingerprint, MapPin, RadioReceiver, Network, Radar } from 'lucide-react';
+import { Aperture, Activity, ShieldAlert, Crosshair, Fingerprint, MapPin, RadioReceiver, Network, Radar, Lock } from 'lucide-react';
 import './Login.css';
 
 // --- GLOBAL SCROLL STATE FOR 3D ---
