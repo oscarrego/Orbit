@@ -468,9 +468,11 @@ const Login = ({ onLogin }) => {
   // Setup Lenis for Genuine Smooth Scrolling
   useEffect(() => {
     const lenis = new Lenis({
-      duration: 2.0, // Smoother, heavier feel
+      duration: 2.5, // Smoother, heavier feel
       easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
       smooth: true,
+      smoothTouch: true, // Enables smooth scrolling on touch devices
+      touchMultiplier: 1.5, // Improves mobile inertia
       wheelMultiplier: 0.8, // Slightly heavier scroll
     });
 
@@ -547,16 +549,16 @@ const Login = ({ onLogin }) => {
           >
             <motion.div variants={revealUp} className="badge-glow">
               <Aperture size={12} className="inline-icon" />
-              <span>ORBITAL SYNCHRONIZATION</span>
+              <span>LIVE NETWORK SYNCHRONIZATION</span>
             </motion.div>
-            <motion.h1 variants={revealUp} className="hero-title">REALTIME <span className="bold-text">ORBIT</span><br/>NETWORK</motion.h1>
-            <motion.p variants={revealUp} className="hero-subtitle">A cinematic network of human presence. Orbit synchronizes your relative position in spacetime. Exist together in realtime.</motion.p>
+            <motion.h1 variants={revealUp} className="hero-title">REALTIME <span className="bold-text">HUMAN</span><br/>PRESENCE</motion.h1>
+            <motion.p variants={revealUp} className="hero-subtitle">See nearby people live. Orbit visualizes human activity instantly, synchronizing your surroundings in realtime.</motion.p>
             
             <motion.div variants={revealUp} className="scroll-indicator">
               <div className="scroll-mouse">
                 <div className="scroll-wheel"></div>
               </div>
-              <span className="scroll-text">INITIATE DESCENT</span>
+              <span className="scroll-text">SCROLL TO EXPLORE</span>
             </motion.div>
           </motion.div>
         </section>
@@ -575,14 +577,14 @@ const Login = ({ onLogin }) => {
               <div className="icon-wrapper">
                 <Network size={24} />
               </div>
-              <h2 className="section-title">LIVE POSITIONAL<br/>SYNCHRONIZATION</h2>
-              <p className="section-desc">Nodes representing humans. When you move, the network moves. Discover who is sharing your exact orbital space at this very second.</p>
+              <h2 className="section-title">LIVE LOCATION<br/>SYNCHRONIZATION</h2>
+              <p className="section-desc">Presence, mapped live. When you move, the network updates instantly. Discover who is sharing your exact physical location at this very second.</p>
               
               <div className="stats-grid">
                 <div className="stat-card">
                   <MapPin size={16} className="stat-icon" />
                   <span className="stat-val">ACTIVE</span>
-                  <span className="stat-label">Proximity Nodes</span>
+                  <span className="stat-label">Nearby Users</span>
                 </div>
                 <div className="stat-card">
                   <Activity size={16} className="stat-icon" />
@@ -594,7 +596,7 @@ const Login = ({ onLogin }) => {
           </motion.div>
         </section>
 
-        {/* SECTION 3: NEARBY USERS */}
+        {/* SECTION 3: PRIVATE ROOMS */}
         <section className="cinematic-section nearby-section">
           <motion.div 
             className="section-inner left-align"
@@ -606,10 +608,10 @@ const Login = ({ onLogin }) => {
             <div className="glass-panel">
               <div className="panel-glow-effect"></div>
               <div className="icon-wrapper">
-                <Radar size={24} />
+                <Lock size={24} />
               </div>
-              <h2 className="section-title">GRAVITATIONAL<br/>PROXIMITY DETECTION</h2>
-              <p className="section-desc">Distance matters. Orbit continuously scans your perimeter, revealing the network of human activity bending around your immediate location.</p>
+              <h2 className="section-title">SYNCHRONIZED<br/>PRIVATE ROOMS</h2>
+              <p className="section-desc">Communicate privately within secure perimeters. Create rooms, join via passcodes, and synchronize exclusively with selected users in realtime.</p>
             </div>
           </motion.div>
         </section>
@@ -628,12 +630,12 @@ const Login = ({ onLogin }) => {
               <div className="icon-wrapper large-icon">
                 <ShieldAlert size={32} />
               </div>
-              <h2 className="section-title text-center">WHEN A SIGNAL IS SENT,<br/>THE NETWORK RESPONDS</h2>
-              <p className="section-desc text-center" style={{ maxWidth: '600px', margin: '0 auto 40px auto' }}>Orbit is built for safety. Activate an SOS to instantly alert nearby users. The network converges, synchronizing live location data to coordinate a human response.</p>
+              <h2 className="section-title text-center">WHEN A SIGNAL IS SENT,<br/>NEARBY PEOPLE RESPOND</h2>
+              <p className="section-desc text-center" style={{ maxWidth: '600px', margin: '0 auto 40px auto' }}>Orbit is built for safety. Activate an SOS to instantly alert nearby users. The network coordinates a human response through live location sharing.</p>
               
               <div className="alert-bar">
                 <div className="alert-pulse"></div>
-                <span>REALTIME DISTRESS BEACON CAPABILITY ACTIVE</span>
+                <span>REALTIME DISTRESS COORDINATION ACTIVE</span>
               </div>
             </div>
           </motion.div>
@@ -675,9 +677,9 @@ const Login = ({ onLogin }) => {
 
               <div className="terminal-status">
                 {username.length < 5 ? (
-                  <span className="status-text blink">AWAITING NODE DESIGNATION... {username.length}/5</span>
+                  <span className="status-text blink">AWAITING IDENTIFICATION... {username.length}/5</span>
                 ) : (
-                  <span className="status-text success">NODE READY FOR DEPLOYMENT</span>
+                  <span className="status-text success">IDENTITY CONFIRMED</span>
                 )}
               </div>
 
@@ -688,11 +690,11 @@ const Login = ({ onLogin }) => {
                   onClick={handleEnterClick}
                 >
                   <Fingerprint size={16} className="btn-icon" />
-                  <span>INITIALIZE ORBIT CONNECTION</span>
+                  <span>CONNECT TO NETWORK</span>
                 </button>
                 <div className="encryption-notice">
                   <RadioReceiver size={12} />
-                  <span>Developed by Oscar</span>
+                  <span>SECURE CONNECTION</span>
                 </div>
               </div>
             </div>

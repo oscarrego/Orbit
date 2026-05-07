@@ -510,6 +510,11 @@ backdrop-filter: blur(32px);
     min-height: 100vh;
   }
 
+  .hero-section .badge-glow {
+    margin-top: -15vh;
+    margin-bottom: 48px;
+  }
+
   .hero-title {
     font-size: clamp(36px, 10vw, 48px);
   }
@@ -588,7 +593,7 @@ backdrop-filter: blur(32px);
 
   .singularity-terminal {
     padding: 40px 24px;
-    margin: 0;
+    margin: 0 auto;
     width: 100%;
     box-sizing: border-box;
   }
