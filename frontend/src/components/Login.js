@@ -549,7 +549,7 @@ const Login = ({ onLogin }) => {
               <Aperture size={12} className="inline-icon" />
               <span>ORBITAL SYNCHRONIZATION</span>
             </motion.div>
-            <motion.h1 variants={revealUp} className="hero-title">REALTIME <span className="bold-text">HUMAN</span><br/>PRESENCE</motion.h1>
+            <motion.h1 variants={revealUp} className="hero-title">REALTIME <span className="bold-text">ORBIT</span><br/>NETWORK</motion.h1>
             <motion.p variants={revealUp} className="hero-subtitle">A cinematic network of human presence. Orbit synchronizes your relative position in spacetime. Exist together in realtime.</motion.p>
             
             <motion.div variants={revealUp} className="scroll-indicator">
@@ -665,7 +665,7 @@ const Login = ({ onLogin }) => {
                   onFocus={() => setIsFocused(true)}
                   onBlur={() => setIsFocused(false)}
                   onKeyDown={handleKeyDown}
-                  placeholder="DESIGNATION"
+                  placeholder="USERNAME"
                   className="terminal-input"
                   spellCheck="false"
                   autoComplete="off"
@@ -692,7 +692,7 @@ const Login = ({ onLogin }) => {
                 </button>
                 <div className="encryption-notice">
                   <RadioReceiver size={12} />
-                  <span>SECURE ORBITAL CHANNEL</span>
+                  <span>Developed by Oscar</span>
                 </div>
               </div>
             </div>

@@ -319,10 +319,9 @@
 
 /* --- THE TERMINAL UI --- */
 .singularity-terminal {
-  background: transparent;
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+background: rgba(0, 0, 0, 0.8);
+backdrop-filter: blur(32px);
+-webkit-backdrop-filter: blur(32px);  border: 1px solid rgba(255, 255, 255, 0.15);
   padding: 64px 48px;
   width: 100%;
   max-width: 600px;
